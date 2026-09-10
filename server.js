@@ -195,6 +195,7 @@ app.use((req, res, next) => {
   res.locals.error = req.session.error || null;
   res.locals.success = req.session.success || null;
   res.locals.firebaseWebConfig = firebaseWebConfig;
+  res.locals.jivoWidgetId = jivoWidgetId;
   delete req.session.error;
   delete req.session.success;
 
