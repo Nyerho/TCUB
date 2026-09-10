@@ -51,7 +51,7 @@ const firebaseWebConfig = {
   appId: process.env.FIREBASE_APP_ID || '1:235825524366:web:07115b8e05c4dace4c23df',
   measurementId: process.env.FIREBASE_MEASUREMENT_ID || 'G-8J4ETW9J8N'
 };
-const jivoWidgetId = process.env.JIVO_WIDGET_ID || '';
+const jivoWidgetId = process.env.JIVO_WIDGET_ID || 'KpAyqA9d1Z';
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
