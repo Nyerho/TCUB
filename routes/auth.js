@@ -25,6 +25,46 @@ function hashResetToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
+async function verifyFirebasePassword(email, password) {
+  const apiKey = process.env.FIREBASE_API_KEY || 'AIzaSyDwY1C_z2plqfUE42zKmN9N9RiCzlTH4fg';
+  try {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true })
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Firebase Auth password verification failed:', error);
+    return null;
+  }
+}
+
+function hydrateConfiguredFirebaseAdmin(firebaseUser, password) {
+  const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'admin@tcub.xyz').trim().toLowerCase();
+  if (!firebaseUser || String(firebaseUser.email || '').toLowerCase() !== configuredAdminEmail) {
+    return null;
+  }
+
+  const passwordHash = bcrypt.hashSync(password, 10);
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(configuredAdminEmail);
+  if (existing) {
+    db.prepare(`
+      UPDATE users
+      SET password = ?, is_admin = 1, is_verified = 1, is_frozen = 0,
+          role = 'super_admin', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(passwordHash, existing.id);
+  } else {
+    db.prepare(`
+      INSERT INTO users (first_name, last_name, email, phone, password, is_admin, is_verified, is_frozen, role)
+      VALUES ('TCUB', 'Administrator', ?, '', ?, 1, 1, 0, 'super_admin')
+    `).run(configuredAdminEmail, passwordHash);
+  }
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(configuredAdminEmail);
+}
+
 function getValidPasswordResetRecord(rawToken) {
   if (!rawToken) {
     return null;
@@ -299,12 +339,22 @@ router.post('/login', async (req, res) => {
     }
   }
 
+  let firebaseUser = null;
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    firebaseUser = await verifyFirebasePassword(normalizedEmail, password);
+    if (firebaseUser && !user) {
+      user = hydrateConfiguredFirebaseAdmin(firebaseUser, password);
+    } else if (firebaseUser && user && normalizedEmail === (process.env.ADMIN_EMAIL || 'admin@tcub.xyz').trim().toLowerCase()) {
+      user = hydrateConfiguredFirebaseAdmin(firebaseUser, password);
+    }
+  }
+
   if (!user) {
     req.session.error = 'Invalid email or password.';
     return res.redirect('/auth/login');
   }
 
-  const isValid = await bcrypt.compare(password, user.password);
+  const isValid = firebaseUser ? true : await bcrypt.compare(password, user.password);
   if (!isValid) {
     req.session.error = 'Invalid email or password.';
     return res.redirect('/auth/login');
