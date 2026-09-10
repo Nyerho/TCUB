@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 const admin = require('firebase-admin');
+const { cert, initializeApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const required = [
   'FIREBASE_PROJECT_ID',
@@ -20,16 +23,16 @@ const privateKey = String(process.env.FIREBASE_PRIVATE_KEY)
   .replace(/\\n/g, '\n')
   .replace(/\\r/g, '\r');
 
-admin.initializeApp({
-  credential: admin.credential.cert({
+initializeApp({
+  credential: cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey
   })
 });
 
-const auth = admin.auth();
-const firestore = admin.firestore();
+const auth = getAuth();
+const firestore = getFirestore();
 const uid = process.env.FIREBASE_ADMIN_UID;
 const email = process.env.ADMIN_EMAIL.trim().toLowerCase();
 const displayName = `${process.env.ADMIN_FIRST_NAME || 'System'} ${process.env.ADMIN_LAST_NAME || 'Administrator'}`.trim();
@@ -67,7 +70,7 @@ async function ensureAuthUser() {
 
 async function bootstrap() {
   const user = await ensureAuthUser();
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = new Date();
   const adminProfile = {
     auth_uid: uid,
     user_id: null,
