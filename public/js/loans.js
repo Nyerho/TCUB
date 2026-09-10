@@ -46,15 +46,15 @@ function setupLoanApply(form) {
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
           <div style="padding:12px;background:var(--bg-gray);border-radius:var(--radius-sm);text-align:center;">
             <div style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;">Monthly Repayment</div>
-            <div style="font-size:1.2rem;font-weight:800;color:var(--primary);">$${parseFloat(data.emi).toLocaleString('en-AU', { minimumFractionDigits: 2 })}</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--primary);">$${parseFloat(data.emi).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
           </div>
           <div style="padding:12px;background:var(--bg-gray);border-radius:var(--radius-sm);text-align:center;">
             <div style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;">Total Interest</div>
-            <div style="font-size:1.2rem;font-weight:800;color:var(--warning);">$${parseFloat(data.interest).toLocaleString('en-AU', { minimumFractionDigits: 2 })}</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--warning);">$${parseFloat(data.interest).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
           </div>
           <div style="padding:12px;background:var(--bg-gray);border-radius:var(--radius-sm);text-align:center;">
             <div style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;">Total Repayable</div>
-            <div style="font-size:1.2rem;font-weight:800;color:var(--text-dark);">$${parseFloat(data.total).toLocaleString('en-AU', { minimumFractionDigits: 2 })}</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--text-dark);">$${parseFloat(data.total).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
       `;
@@ -77,7 +77,7 @@ function setupPaymentForms() {
     loanPaymentForm.addEventListener('submit', e => {
       const amt = parseFloat(loanPaymentForm.querySelector('[name=amount]').value);
       if (amt <= 0) { e.preventDefault(); alert('Enter valid payment amount.'); return; }
-      if (!confirm(`Confirm loan payment of $${amt.toLocaleString('en-AU')}?`)) e.preventDefault();
+      if (!confirm(`Confirm loan payment of $${amt.toLocaleString('en-US')}?`)) e.preventDefault();
     });
   }
 }

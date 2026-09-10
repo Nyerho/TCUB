@@ -12,11 +12,11 @@ const {
 const router = express.Router();
 
 const DOCUMENT_TYPES = [
-  { type: 'Drivers Licence', name: "Australian Driver's Licence", requires_both: true },
-  { type: 'Passport', name: 'Australian Passport', requires_both: false },
+  { type: 'Drivers Licence', name: "American Driver's Licence", requires_both: true },
+  { type: 'Passport', name: 'American Passport', requires_both: false },
   { type: 'Proof of Age', name: 'Proof of Age Card', requires_both: true },
   { type: 'Medicare', name: 'Medicare Card', requires_both: true },
-  { type: 'Birth Certificate', name: 'Australian Birth Certificate', requires_both: false },
+  { type: 'Birth Certificate', name: 'American Birth Certificate', requires_both: false },
   { type: 'Citizenship', name: 'Citizenship Certificate', requires_both: false }
 ];
 

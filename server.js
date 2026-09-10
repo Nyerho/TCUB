@@ -185,8 +185,8 @@ if (isServerless) {
 
 app.use((req, res, next) => {
   res.locals.moment = moment;
-  res.locals.currency = (amount, currency = 'AUD') => {
-    return new Intl.NumberFormat('en-AU', {
+  res.locals.currency = (amount, currency = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency
     }).format(amount || 0);

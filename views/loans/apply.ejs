@@ -32,7 +32,7 @@
 
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Loan Amount (AUD) *</label>
+            <label class="form-label">Loan Amount (USD) *</label>
             <div style="position:relative;">
               <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);font-weight:600;color:var(--text-gray);">$</span>
               <input type="number" name="principal_amount" id="loanAmount" required min="1000" step="500" value="25000" class="form-input" style="padding-left:32px;">
@@ -65,7 +65,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Annual Income (AUD) *</label>
+            <label class="form-label">Annual Income (USD) *</label>
             <input type="number" name="annual_income" required min="0" step="1000" class="form-input" placeholder="e.g. 85000">
           </div>
         </div>
@@ -149,8 +149,8 @@
         <div style="padding:16px 20px;display:flex;gap:12px;">
           <div style="font-size:1.5rem;">🔒</div>
           <div>
-            <div style="font-weight:700;font-size:0.95rem;">APRA regulated</div>
-            <div style="font-size:0.85rem;color:var(--text-light);">Australian bank, Australian standards, Australian support</div>
+            <div style="font-weight:700;font-size:0.95rem;">the NCUA regulated</div>
+            <div style="font-size:0.85rem;color:var(--text-light);">American bank, American standards, American support</div>
           </div>
         </div>
       </div>
@@ -168,11 +168,11 @@ function updateLoanCalc() {
   const emi = r > 0 ? (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) : P / n;
   const total = emi * n;
   const interest = total - P;
-  document.getElementById('monthlyPayment').textContent = '$' + emi.toLocaleString('en-AU', {maximumFractionDigits: 0, minimumFractionDigits: 0});
+  document.getElementById('monthlyPayment').textContent = '$' + emi.toLocaleString('en-US', {maximumFractionDigits: 0, minimumFractionDigits: 0});
   document.getElementById('interestRate').textContent = 'Interest rate ' + rate.toFixed(2) + '% p.a.';
-  document.getElementById('sumPrincipal').textContent = '$' + P.toLocaleString('en-AU');
-  document.getElementById('sumInterest').textContent = '$' + interest.toLocaleString('en-AU', {maximumFractionDigits: 0});
-  document.getElementById('sumTotal').textContent = '$' + total.toLocaleString('en-AU', {maximumFractionDigits: 0});
+  document.getElementById('sumPrincipal').textContent = '$' + P.toLocaleString('en-US');
+  document.getElementById('sumInterest').textContent = '$' + interest.toLocaleString('en-US', {maximumFractionDigits: 0});
+  document.getElementById('sumTotal').textContent = '$' + total.toLocaleString('en-US', {maximumFractionDigits: 0});
 }
 document.getElementById('loanAmount').addEventListener('input', updateLoanCalc);
 setTimeout(updateLoanCalc, 100);

@@ -51,7 +51,7 @@
             </td>
             <td>
               <div style="font-weight:600;font-size:0.9rem;"><%= b.biller_name || b.description || 'Payment' %></div>
-              <% if (b.biller_code) { %><div style="font-size:0.72rem;color:var(--text-light);">BPAY Code: <%= b.biller_code %></div><% } %>
+              <% if (b.biller_code) { %><div style="font-size:0.72rem;color:var(--text-light);">online bill pay Code: <%= b.biller_code %></div><% } %>
             </td>
             <td style="font-family:monospace;font-size:0.85rem;"><%= b.customer_ref || '—' %></td>
             <td><span class="tag tag-verified"><%= b.frequency || 'One-off' %></span></td>

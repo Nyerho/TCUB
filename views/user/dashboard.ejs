@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en-AU">
+<html lang="en-US">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#C8102E">
+  <meta name="theme-color" content="#B7E33A">
   <title><%= title %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -149,7 +149,7 @@
                       <div class="account-type-icon">💳</div>
                       <div>
                         <div class="account-name"><%= acc.account_type %></div>
-                        <div class="account-number">BSB <%= acc.bsb %> • <%= acc.account_number.slice(acc.account_number.length - 4) %></div>
+                        <div class="account-number">Routing <%= acc.bsb %> • <%= acc.account_number.slice(acc.account_number.length - 4) %></div>
                       </div>
                     </div>
                     <div class="account-balance">
@@ -312,14 +312,14 @@
             </div>
 
             <div class="card">
-              <div class="card-header"><h3 class="card-title">🇦🇺 Need Help?</h3></div>
+              <div class="card-header"><h3 class="card-title">🇺🇸 Need Help?</h3></div>
               <div class="card-body">
                 <div class="dashboard-help-visual">
                   <img src="/images/walletcards.jpg" alt="Wallet and cards image">
                 </div>
                 <div style="padding:14px;background:var(--primary-alpha);border-radius:var(--radius);margin-bottom:12px;">
-                  <div style="font-weight:600;font-size:0.9rem;color:var(--primary);">📞 1300 TCUBANK</div>
-                  <div style="font-size:0.8rem;color:var(--text-gray);">Mon-Fri 8am-8pm AEST</div>
+                  <div style="font-weight:600;font-size:0.9rem;color:var(--primary);">📞 1-800-TCUBANK</div>
+                  <div style="font-size:0.8rem;color:var(--text-gray);">Mon-Fri 8am-8pm ET</div>
                 </div>
                 <a href="/user/support" class="btn btn-outline btn-block">Contact Support</a>
               </div>

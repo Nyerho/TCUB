@@ -119,7 +119,7 @@ router.post('/local', requireAuth, requireVerified, async (req, res) => {
 
   const insertInfo = db.prepare(`
     INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, reference, recipient_name, recipient_account, recipient_bsb, recipient_bank, status, fee)
-    VALUES (?, ?, 'local_transfer', ?, 'AUD', ?, ?, ?, ?, ?, 'Australia', ?, ?)
+    VALUES (?, ?, 'local_transfer', ?, 'USD', ?, ?, ?, ?, ?, 'United States', ?, ?)
   `).run(
     from_account,
     req.session.userId,
@@ -167,14 +167,14 @@ router.post('/local', requireAuth, requireVerified, async (req, res) => {
     if (!exists) {
       db.prepare(`
         INSERT INTO beneficiaries (user_id, name, account_number, bsb, bank_name, country, is_international)
-        VALUES (?, ?, ?, ?, 'Australia', 'Australia', 0)
+        VALUES (?, ?, ?, ?, 'United States', 'United States', 0)
       `).run(req.session.userId, beneficiary_name || to_name, to_account, to_bsb || '');
     }
   }
 
   req.session.success = status === 'completed' 
-    ? `Transfer of $${parseFloat(amount).toLocaleString('en-AU')} completed successfully!`
-    : `Transfer of $${parseFloat(amount).toLocaleString('en-AU')} submitted for approval. You will be notified once processed.`;
+    ? `Transfer of $${parseFloat(amount).toLocaleString('en-US')} completed successfully!`
+    : `Transfer of $${parseFloat(amount).toLocaleString('en-US')} submitted for approval. You will be notified once processed.`;
   res.redirect('/transfers');
 });
 
@@ -196,8 +196,7 @@ router.get('/international', requireAuth, requireVerified, (req, res) => {
     countries,
     currencies,
     rates: {
-      AUD: 1,
-      USD: 0.66, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
+      USD: 1, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
       SGD: 0.88, HKD: 5.15, CAD: 0.89, INR: 54.80, CNY: 4.75
     },
     exchangeRates: {
@@ -231,8 +230,7 @@ router.post('/international', requireAuth, requireVerified, async (req, res) => 
     return res.redirect(pinState.code === 'missing' ? '/user/settings' : '/transfers/international');
   }
   const exchangeRates = {
-    AUD: 1,
-    USD: 0.66, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
+    USD: 1, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
     SGD: 0.88, HKD: 5.15, CAD: 0.89, INR: 54.80, CNY: 4.75
   };
   const to_account = req.body.to_account || req.body.iban || '';
@@ -267,7 +265,7 @@ router.post('/international', requireAuth, requireVerified, async (req, res) => 
 
   const insertInfo = db.prepare(`
     INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, reference, recipient_name, recipient_account, swift_code, iban, country, status, fee, exchange_rate, converted_amount)
-    VALUES (?, ?, 'international_transfer', ?, 'AUD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, 'international_transfer', ?, 'USD', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     from_account,
     req.session.userId,
@@ -307,8 +305,8 @@ router.post('/international', requireAuth, requireVerified, async (req, res) => 
     `).run(req.session.userId, beneficiary_name || to_name, to_account, swift_code || '', iban || '', country);
   }
 
-  addNotification(req.session.userId, 'International Transfer Pending', `AUD $${amount.toLocaleString()} transfer to ${to_name} (${country}) is awaiting approval`, 'warning');
-  req.session.success = `International transfer of AUD $${amount.toLocaleString('en-AU')} submitted for approval.`;
+  addNotification(req.session.userId, 'International Transfer Pending', `USD $${amount.toLocaleString()} transfer to ${to_name} (${country}) is awaiting approval`, 'warning');
+  req.session.success = `International transfer of USD $${amount.toLocaleString('en-US')} submitted for approval.`;
   res.redirect('/transfers');
 });
 

@@ -52,7 +52,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Country</label>
-            <input type="text" name="country" value="<%= user.country || 'Australia' %>" class="form-input" readonly>
+            <input type="text" name="country" value="<%= user.country || 'United States' %>" class="form-input" readonly>
           </div>
         </div>
         <div class="form-group">
@@ -68,14 +68,14 @@
             <label class="form-label">State</label>
             <select name="state" class="form-select">
               <option value="">Select...</option>
-              <% ['NSW','VIC','QLD','SA','WA','TAS','NT','ACT'].forEach(s => { %>
+              <% ['GA','VIC','QLD','SA','WA','TAS','NT','ACT'].forEach(s => { %>
                 <option value="<%= s %>" <%= user.state === s ? 'selected' : '' %>><%= s %></option>
               <% }) %>
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Postcode</label>
+          <label class="form-label">ZIP code</label>
           <input type="text" name="postcode" value="<%= user.postcode || '' %>" placeholder="e.g. 2000" class="form-input" maxlength="4">
         </div>
         <button type="submit" class="btn btn-primary btn-lg btn-block">💾 Save Changes</button>

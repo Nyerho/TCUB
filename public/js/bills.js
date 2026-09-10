@@ -51,7 +51,7 @@ function setupWithdraw(form) {
   form.addEventListener('submit', e => {
     const amt = parseFloat(amount.value);
     if (amt <= 0) { e.preventDefault(); alert('Enter valid amount.'); return; }
-    if (amt > maxAmt) { e.preventDefault(); alert(`Insufficient balance. Max available: $${maxAmt.toLocaleString('en-AU', { minimumFractionDigits: 2 })}`); return; }
+    if (amt > maxAmt) { e.preventDefault(); alert(`Insufficient balance. Max available: $${maxAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })}`); return; }
     if (amt >= 5000) {
       if (!confirm(`Withdrawals over $5,000 require admin approval. Continue?`)) e.preventDefault();
     }

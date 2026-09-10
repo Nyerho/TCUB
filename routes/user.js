@@ -256,7 +256,7 @@ router.post('/beneficiaries/add', requireAuth, (req, res) => {
   db.prepare(`
     INSERT INTO beneficiaries (user_id, name, account_number, bsb, bank_name, swift_code, iban, country, is_international)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(req.session.userId, name, account_number, bsb || '', bank_name || '', swift_code || '', iban || '', country || 'Australia', is_international ? 1 : 0);
+  `).run(req.session.userId, name, account_number, bsb || '', bank_name || '', swift_code || '', iban || '', country || 'United States', is_international ? 1 : 0);
 
   req.session.success = 'Beneficiary added successfully.';
   res.redirect('/user/beneficiaries');

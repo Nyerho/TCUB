@@ -10,7 +10,7 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="card-header"><h3 class="card-title">🇦🇺 Australian Beneficiaries</h3></div>
+    <div class="card-header"><h3 class="card-title">🇺🇸 American Beneficiaries</h3></div>
     <div class="card-body" style="padding:0;">
       <% const local = beneficiaries.filter(b => !b.is_international); %>
       <% if (local.length === 0) { %>
@@ -26,7 +26,7 @@
           <div style="flex:1;min-width:0;">
             <div style="font-weight:700;font-size:0.95rem;"><%= b.name %></div>
             <div style="font-size:0.82rem;color:var(--text-gray);font-family:monospace;">
-              BSB <%= b.bsb || '—' %> • ACC <%= b.account_number %>
+              Routing <%= b.bsb || '—' %> • ACC <%= b.account_number %>
             </div>
             <% if (b.bank_name) { %>
               <div style="font-size:0.8rem;color:var(--text-light);"><%= b.bank_name %></div>
@@ -92,7 +92,7 @@
         <div class="form-group">
           <label class="form-label">Beneficiary Type</label>
           <select id="benType" name="is_international" class="form-select" onchange="toggleBenType()">
-            <option value="0">🇦🇺 Australian (Local)</option>
+            <option value="0">🇺🇸 American (Local)</option>
             <option value="1">🌍 International (Overseas)</option>
           </select>
         </div>
@@ -102,8 +102,8 @@
         </div>
         <div class="form-grid">
           <div id="bsbWrap">
-            <label class="form-label">BSB</label>
-            <input type="text" name="bsb" class="form-input" placeholder="e.g. 082-987" maxlength="7">
+            <label class="form-label">Routing</label>
+            <input type="text" name="bsb" class="form-input" placeholder="e.g. 021000021" maxlength="9">
           </div>
           <div>
             <label class="form-label">Account Number *</label>
@@ -122,7 +122,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">SWIFT Code</label>
-              <input type="text" name="swift_code" class="form-input" placeholder="e.g. NATAUS33">
+              <input type="text" name="swift_code" class="form-input" placeholder="e.g. NATUSA33">
             </div>
           </div>
         </div>

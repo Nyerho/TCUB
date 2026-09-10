@@ -27,7 +27,7 @@
           <span style="color:var(--text-gray);">Owner</span><strong><a href="/admin/users/<%= account.user_id %>" style="color:var(--primary);"><%= account.user_name || 'User #' + account.user_id %></a></strong>
         </div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
-          <span style="color:var(--text-gray);">BSB • Number</span><strong style="font-family:monospace;">BSB <%= account.bsb %> • <%= account.account_number %></strong>
+          <span style="color:var(--text-gray);">Routing • Number</span><strong style="font-family:monospace;">Routing <%= account.bsb %> • <%= account.account_number %></strong>
         </div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
           <span style="color:var(--text-gray);">Name</span><strong><%= account.account_name %></strong>
@@ -91,10 +91,10 @@
       </div>
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Account Number</label><input type="text" name="account_number" class="form-input" value="<%= account.account_number %>"></div>
-        <div class="form-group"><label class="form-label">BSB</label><input type="text" name="bsb" class="form-input" value="<%= account.bsb %>"></div>
+        <div class="form-group"><label class="form-label">Routing</label><input type="text" name="bsb" class="form-input" value="<%= account.bsb %>"></div>
       </div>
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Currency</label><input type="text" name="currency" class="form-input" value="<%= account.currency || 'AUD' %>"></div>
+        <div class="form-group"><label class="form-label">Currency</label><input type="text" name="currency" class="form-input" value="<%= account.currency || 'USD' %>"></div>
         <div class="form-group"><label class="form-label">Branch</label><input type="text" name="branch" class="form-input" value="<%= account.branch || '' %>"></div>
       </div>
       <div class="form-grid">

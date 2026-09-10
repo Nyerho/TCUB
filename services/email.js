@@ -65,8 +65,8 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function formatCurrency(amount, currency = 'AUD') {
-  return new Intl.NumberFormat('en-AU', {
+function formatCurrency(amount, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency
   }).format(Number(amount || 0));
@@ -384,7 +384,7 @@ async function sendTransactionActivityEmailById(txnId, options = {}) {
     </p>
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
       <div style="font-size:14px;margin-bottom:6px;"><strong>Type:</strong> ${escapeHtml(effectLabel)}</div>
-      <div style="font-size:14px;margin-bottom:6px;"><strong>Amount:</strong> ${escapeHtml(formatCurrency(amountAbs, txn.currency || 'AUD'))}</div>
+      <div style="font-size:14px;margin-bottom:6px;"><strong>Amount:</strong> ${escapeHtml(formatCurrency(amountAbs, txn.currency || 'USD'))}</div>
       <div style="font-size:14px;margin-bottom:6px;"><strong>Status:</strong> ${escapeHtml(statusLine)}</div>
       <div style="font-size:14px;margin-bottom:6px;"><strong>Account:</strong> ${escapeHtml(txn.account_name || 'Account')} ending ${escapeHtml(accountSuffix)}</div>
       <div style="font-size:14px;margin-bottom:6px;"><strong>Description:</strong> ${escapeHtml(description)}</div>
@@ -396,9 +396,9 @@ async function sendTransactionActivityEmailById(txnId, options = {}) {
 
   return sendEmail({
     to: txn.email,
-    subject: `${effectLabel} alert: ${formatCurrency(amountAbs, txn.currency || 'AUD')} ${statusLine}`,
+    subject: `${effectLabel} alert: ${formatCurrency(amountAbs, txn.currency || 'USD')} ${statusLine}`,
     html: buildEmailFrame(title, body),
-    text: `${effectLabel} alert: ${formatCurrency(amountAbs, txn.currency || 'AUD')} ${statusLine}. ${description}`
+    text: `${effectLabel} alert: ${formatCurrency(amountAbs, txn.currency || 'USD')} ${statusLine}. ${description}`
   });
 }
 

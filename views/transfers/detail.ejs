@@ -18,7 +18,7 @@
         <div style="margin-bottom:8px;">
           <span class="status-badge status-<%= tx.status %>"><%= tx.status.toUpperCase() %></span>
         </div>
-        <div style="color:var(--text-light);font-size:0.9rem;"><%= moment(tx.created_at).format('dddd, DD MMMM YYYY at HH:mm AEST') %></div>
+        <div style="color:var(--text-light);font-size:0.9rem;"><%= moment(tx.created_at).format('dddd, DD MMMM YYYY at HH:mm ET') %></div>
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:8px 0 20px;">
@@ -35,7 +35,7 @@
         <% if (tx.to_account) { %>
         <div style="display:flex;justify-content:space-between;padding:10px 0;">
           <span style="color:var(--text-gray);">Recipient Account</span>
-          <strong style="font-family:monospace;"><%= tx.to_bsb ? 'BSB ' + tx.to_bsb + ' • ' : '' %><%= tx.to_account %></strong>
+          <strong style="font-family:monospace;"><%= tx.to_bsb ? 'Routing ' + tx.to_bsb + ' • ' : '' %><%= tx.to_account %></strong>
         </div>
         <% } %>
         <% if (tx.country) { %>
@@ -51,7 +51,7 @@
         </div>
         <div style="display:flex;justify-content:space-between;padding:10px 0;">
           <span style="color:var(--text-gray);">Exchange Rate</span>
-          <strong>1 AUD = <%= tx.exchange_rate %> <%= tx.foreign_currency %></strong>
+          <strong>1 USD = <%= tx.exchange_rate %> <%= tx.foreign_currency %></strong>
         </div>
         <% } %>
         <div style="display:flex;justify-content:space-between;padding:10px 0;">

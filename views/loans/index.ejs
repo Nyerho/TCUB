@@ -16,7 +16,7 @@
     <div class="card">
       <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:16px;">
         <div style="display:flex;gap:16px;align-items:center;flex:1;">
-          <div class="user-avatar" style="width:56px;height:56px;font-size:1.5rem;background:linear-gradient(135deg,#C8102E,#7A0A1D);color:white;">🏦</div>
+          <div class="user-avatar" style="width:56px;height:56px;font-size:1.5rem;background:linear-gradient(135deg,#B7E33A,#7A0A1D);color:white;">🏦</div>
           <div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <h3 style="margin:0;font-size:1.15rem;"><%= loan.loan_type %></h3>
@@ -84,7 +84,7 @@
 <div class="section-header" style="text-align:left;">
   <span class="section-eyebrow">💼 Available Loans</span>
   <h2 style="font-size:1.6rem;margin:12px 0 4px;">Compare our loan products</h2>
-  <p style="margin:0;">Fast approvals, flexible terms, and competitive Australian interest rates.</p>
+  <p style="margin:0;">Fast approvals, flexible terms, and competitive American interest rates.</p>
 </div>
 
 <div class="features-grid" style="margin-top:20px;">
@@ -92,7 +92,7 @@
     <div class="feature-card">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px;">
         <div class="feature-icon" style="width:52px;height:52px;font-size:1.5rem;border-radius:14px;
-          background:<%= l.type.includes('Home') ? 'linear-gradient(135deg,#059669,#047857)' : l.type.includes('Car') ? 'linear-gradient(135deg,#2563EB,#1D4ED8)' : l.type.includes('Business') ? 'linear-gradient(135deg,#7C3AED,#6D28D9)' : l.type.includes('Education') ? 'linear-gradient(135deg,#0891B2,#0E7490)' : l.type.includes('Line') ? 'linear-gradient(135deg,#DB2777,#BE185D)' : 'linear-gradient(135deg,#C8102E,#7A0A1D)' %>;">
+          background:<%= l.type.includes('Home') ? 'linear-gradient(135deg,#059669,#047857)' : l.type.includes('Car') ? 'linear-gradient(135deg,#2563EB,#1D4ED8)' : l.type.includes('Business') ? 'linear-gradient(135deg,#7C3AED,#6D28D9)' : l.type.includes('Education') ? 'linear-gradient(135deg,#0891B2,#0E7490)' : l.type.includes('Line') ? 'linear-gradient(135deg,#DB2777,#BE185D)' : 'linear-gradient(135deg,#B7E33A,#7A0A1D)' %>;">
           🏦
         </div>
         <span class="tag" style="background:var(--primary-alpha);color:var(--primary);font-weight:700;"><%= l.rate %></span>

@@ -64,7 +64,7 @@
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Currency</label>
-            <input type="text" name="currency" class="form-input" value="<%= transaction ? (transaction.currency || 'AUD') : 'AUD' %>" maxlength="3">
+            <input type="text" name="currency" class="form-input" value="<%= transaction ? (transaction.currency || 'USD') : 'USD' %>" maxlength="3">
           </div>
           <div class="form-group">
             <label class="form-label">Backdate / Created At *</label>
@@ -94,7 +94,7 @@
             <input type="text" name="recipient_account" class="form-input" value="<%= transaction ? (transaction.recipient_account || transaction.iban || '') : '' %>">
           </div>
           <div class="form-group">
-            <label class="form-label">Recipient BSB</label>
+            <label class="form-label">Recipient Routing</label>
             <input type="text" name="recipient_bsb" class="form-input" value="<%= transaction ? (transaction.recipient_bsb || '') : '' %>">
           </div>
         </div>
@@ -106,7 +106,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Country</label>
-            <input type="text" name="country" class="form-input" value="<%= transaction ? (transaction.country || 'Australia') : 'Australia' %>">
+            <input type="text" name="country" class="form-input" value="<%= transaction ? (transaction.country || 'United States') : 'United States' %>">
           </div>
         </div>
 

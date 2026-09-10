@@ -111,19 +111,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-function formatCurrency(amount, currency = 'AUD') {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(amount || 0);
+function formatCurrency(amount, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount || 0);
 }
 
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function validatePhoneAus(phone) {
-  return /^(\+?61|0)[2-478](\s?\d){7,9}$/.test(phone.replace(/\s/g, ''));
+function validatePhoneUs(phone) {
+  return /^(\+?1[2-9]\d{2}|[2-9]\d{2})[\s.-]?\d{3}[\s.-]?\d{4}$/.test(phone.replace(/[^\d+]/g, ''));
 }
 
-function validateBSB(bsb) {
+function validateRouting(bsb) {
   return /^\d{3}-?\d{3}$/.test(bsb);
 }
 

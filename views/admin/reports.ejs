@@ -69,7 +69,7 @@
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
             <div style="font-weight:600;font-size:0.9rem;display:flex;align-items:center;gap:8px;">
-              <%= t.type.includes('local')?'🇦🇺':t.type.includes('intl')?'🌍':t.type.includes('dep')?'⬇️':t.type.includes('with')?'⬆️':t.type.includes('bill')?'📄':t.type.includes('loan')?'💳':'💸' %>
+              <%= t.type.includes('local')?'🇺🇸':t.type.includes('intl')?'🌍':t.type.includes('dep')?'⬇️':t.type.includes('with')?'⬆️':t.type.includes('bill')?'📄':t.type.includes('loan')?'💳':'💸' %>
               <%= t.type.replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase()) %>
             </div>
             <div style="text-align:right;">

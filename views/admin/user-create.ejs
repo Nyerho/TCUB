@@ -46,14 +46,14 @@
             <label class="form-label">State</label>
             <select name="state" class="form-select">
               <option value="">Select...</option>
-              <% ['NSW','VIC','QLD','SA','WA','TAS','NT','ACT'].forEach(s => { %>
+              <% ['GA','VIC','QLD','SA','WA','TAS','NT','ACT'].forEach(s => { %>
                 <option><%= s %></option>
               <% }) %>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Postcode</label>
-            <input type="text" name="postcode" maxlength="4" class="form-input">
+            <label class="form-label">ZIP code</label>
+            <input type="text" name="postcode" maxlength="5" class="form-input">
           </div>
         </div>
         <div class="form-grid">

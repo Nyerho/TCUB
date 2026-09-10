@@ -266,7 +266,7 @@ function buildTransactionPayload(body) {
     account_id: parseInt(body.account_id, 10),
     transaction_type: body.transaction_type,
     amount: parseMoney(body.amount),
-    currency: body.currency || 'AUD',
+    currency: body.currency || 'USD',
     description: body.description || '',
     reference: body.reference || '',
     recipient_name: body.recipient_name || '',
@@ -275,7 +275,7 @@ function buildTransactionPayload(body) {
     recipient_bank: body.recipient_bank || '',
     swift_code: body.swift_code || '',
     iban: body.iban || '',
-    country: body.country || 'Australia',
+    country: body.country || 'United States',
     status: body.status || 'completed',
     fee: parseMoney(body.fee),
     exchange_rate: body.exchange_rate ? parseMoney(body.exchange_rate) : null,
@@ -576,7 +576,7 @@ router.post('/users/:id/update', requireAdmin, async (req, res) => {
   db.prepare(`
     UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ?, city = ?, state = ?, postcode = ?, country = ?, date_of_birth = ?, is_verified = ?, is_frozen = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(first_name, last_name, email, phone, address, city, state, postcode, country || 'Australia', date_of_birth || null, is_verified ? 1 : 0, is_frozen ? 1 : 0, userId);
+  `).run(first_name, last_name, email, phone, address, city, state, postcode, country || 'United States', date_of_birth || null, is_verified ? 1 : 0, is_frozen ? 1 : 0, userId);
 
   if (isFirestoreEnabled()) {
     try {
@@ -729,13 +729,13 @@ router.post('/users/:id/accounts/create', requireAdmin, async (req, res) => {
   const accountId = db.prepare(`
     INSERT INTO accounts (user_id, account_number, account_type, account_name, balance, available_balance, status, branch, bsb)
     VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
-  `).run(userId, accNum, account_type || 'Everyday Savings', `${user.first_name} ${user.last_name}`, initBalance, initBalance, branch || 'Sydney CBD', bsb || '082-987').lastInsertRowid;
+  `).run(userId, accNum, account_type || 'Everyday Savings', `${user.first_name} ${user.last_name}`, initBalance, initBalance, branch || 'Atlanta CBD', bsb || '021000021').lastInsertRowid;
 
   let txnId = null;
   if (initBalance > 0) {
     const txnInfo = db.prepare(`
       INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, status, approved_by, approved_at)
-      VALUES (?, ?, 'deposit', ?, 'AUD', ?, 'completed', ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, 'deposit', ?, 'USD', ?, 'completed', ?, CURRENT_TIMESTAMP)
     `).run(accountId, userId, initBalance, `Initial Deposit - Account Opening`, req.session.userId);
     txnId = txnInfo.lastInsertRowid;
   }
@@ -796,7 +796,7 @@ router.post('/users/:id/adjust-balance', requireAdmin, async (req, res) => {
     db.prepare('UPDATE accounts SET balance = ?, available_balance = ? WHERE id = ?').run(newBalance, newAvailable, account_id);
     const info = db.prepare(`
       INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, status, approved_by, approved_at)
-      VALUES (?, ?, 'admin_adjustment', ?, 'AUD', ?, 'completed', ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, 'admin_adjustment', ?, 'USD', ?, 'completed', ?, CURRENT_TIMESTAMP)
     `).run(account_id, userId, txnAmount, txnDescription, req.session.userId);
     return info.lastInsertRowid;
   });
@@ -1082,7 +1082,7 @@ router.post('/loans/:id/approve', requireAdmin, async (req, res) => {
       db.prepare('UPDATE accounts SET balance = balance + ?, available_balance = available_balance + ? WHERE id = ?').run(loan.loan_amount, loan.loan_amount, account.id);
       const info = db.prepare(`
         INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, status, approved_by, approved_at)
-        VALUES (?, ?, 'loan_disbursement', ?, 'AUD', ?, 'completed', ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, 'loan_disbursement', ?, 'USD', ?, 'completed', ?, CURRENT_TIMESTAMP)
       `).run(account.id, loan.user_id, loan.loan_amount, `${loan.loan_type} Disbursement - Loan #${loanId}`, req.session.userId);
       newTxnId = info.lastInsertRowid;
     }
@@ -1146,7 +1146,7 @@ router.post('/bills/:id/approve', requireAdmin, async (req, res) => {
     db.prepare('UPDATE bill_payments SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?').run('completed', req.session.userId, billId);
     const info = db.prepare(`
       INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, reference, status, approved_by, approved_at)
-      VALUES (?, ?, 'bill_payment', ?, 'AUD', ?, ?, 'completed', ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, 'bill_payment', ?, 'USD', ?, ?, 'completed', ?, CURRENT_TIMESTAMP)
     `).run(bill.account_id, bill.user_id, bill.amount, `Bill Payment: ${bill.biller_name}`, bill.reference_number, req.session.userId);
     newTxnId = info.lastInsertRowid;
   });
@@ -1290,9 +1290,9 @@ router.post('/accounts/:id/update', requireAdmin, (req, res) => {
       account_number,
       account_type,
       account_name,
-      currency || 'AUD',
-      branch || 'Sydney CBD',
-      bsb || '082-987',
+      currency || 'USD',
+      branch || 'Atlanta CBD',
+      bsb || '021000021',
       parseMoney(interest_rate),
       newBalance,
       newAvailable,
@@ -1308,7 +1308,7 @@ router.post('/accounts/:id/update', requireAdmin, (req, res) => {
         accountId,
         account.user_id,
         balanceDelta,
-        currency || account.currency || 'AUD',
+        currency || account.currency || 'USD',
         `Admin balance correction on account ${account.account_number}`,
         req.session.userId
       );
@@ -1797,7 +1797,7 @@ router.post('/admins/create', requireAdmin, async (req, res) => {
   const hashed = await bcrypt.hash(password || 'AdminPass2026!', 10);
   const result = db.prepare(`
     INSERT INTO users (first_name, last_name, email, phone, password, address, city, state, postcode, country, is_admin, is_verified)
-    VALUES (?, ?, ?, ?, ?, '1 Martin Place', 'Sydney', 'NSW', '2000', 'Australia', 1, 1)
+    VALUES (?, ?, ?, ?, ?, '100 Peachtree Street NW', 'Atlanta', 'GA', '30303', 'United States', 1, 1)
   `).run(first_name, last_name, email, phone, hashed);
 
   db.prepare(`

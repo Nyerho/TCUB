@@ -29,14 +29,14 @@ const BILLERS = [
   { code: 'VODAFONE', name: 'Vodafone AU', category: 'Telecommunications', icon: '📡' },
   { code: 'AGL', name: 'AGL Energy', category: 'Utilities - Electricity/Gas', icon: '⚡' },
   { code: 'ORIGIN', name: 'Origin Energy', category: 'Utilities - Electricity/Gas', icon: '🔌' },
-  { code: 'ENERGYAUS', name: 'EnergyAustralia', category: 'Utilities - Electricity/Gas', icon: '💡' },
+  { code: 'ENERGYUSA', name: 'EnergyUnited States', category: 'Utilities - Electricity/Gas', icon: '💡' },
   { code: 'SYDWATER', name: 'Local utility providers', category: 'Utilities - Water', icon: '💧' },
-  { code: 'MELBWATER', name: 'Melbourne Water', category: 'Utilities - Water', icon: '🚿' },
+  { code: 'MELBWATER', name: 'Savannah Water', category: 'Utilities - Water', icon: '🚿' },
   { code: 'COUNCIL', name: 'Local Council Rates', category: 'Government', icon: '🏛️' },
-  { code: 'ATO', name: 'Australian Taxation Office', category: 'Government - Tax', icon: '📋' },
-  { code: 'NSWFINES', name: 'Revenue NSW - Fines', category: 'Government - Fines', icon: '⚖️' },
+  { code: 'IRS', name: 'American Taxation Office', category: 'Government - Tax', icon: '📋' },
+  { code: 'GAFINES', name: 'Revenue GA - Fines', category: 'Government - Fines', icon: '⚖️' },
   { code: 'VICFINES', name: 'Victoria Fines', category: 'Government - Fines', icon: '⚖️' },
-  { code: 'RMS', name: 'Transport for NSW (RMS)', category: 'Government - Transport', icon: '🚗' },
+  { code: 'RMS', name: 'Transport for GA (RMS)', category: 'Government - Transport', icon: '🚗' },
   { code: 'VICROADS', name: 'VicRoads', category: 'Government - Transport', icon: '🚙' },
   { code: 'FOXTEL', name: 'Foxtel', category: 'Entertainment', icon: '📺' },
   { code: 'NETFLIX', name: 'Netflix', category: 'Entertainment - Streaming', icon: '🎬' },
@@ -45,7 +45,7 @@ const BILLERS = [
   { code: 'WOOLWORTHS', name: 'Woolworths', category: 'Retail - Grocery', icon: '🛍️' },
   { code: 'INSURANCE', name: 'Insurance Premiums', category: 'Insurance', icon: '🛡️' },
   { code: 'MEDIBANK', name: 'Medibank Private', category: 'Health Insurance', icon: '🏥' },
-  { code: 'BUPA', name: 'Bupa Australia', category: 'Health Insurance', icon: '❤️' },
+  { code: 'BUPA', name: 'Bupa United States', category: 'Health Insurance', icon: '❤️' },
   { code: 'SCHOOL', name: 'School Fees', category: 'Education', icon: '🎓' },
   { code: 'UNI', name: 'University Fees (HECS)', category: 'Education', icon: '📚' },
   { code: 'CARREG', name: 'Car Registration', category: 'Government - Transport', icon: '🚘' },
@@ -133,7 +133,7 @@ router.post('/pay', requireAuth, requireVerified, async (req, res) => {
 
   const insert = db.prepare(`
     INSERT INTO bill_payments (user_id, account_id, biller_name, biller_code, reference_number, amount, currency, payment_date, recurring, frequency, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'AUD', ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, 'USD', ?, ?, ?, ?)
   `);
   insert.run(
     req.session.userId,
@@ -153,7 +153,7 @@ router.post('/pay', requireAuth, requireVerified, async (req, res) => {
   if (status === 'completed') {
     const txnInsert = db.prepare(`
       INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, reference, status)
-      VALUES (?, ?, 'bill_payment', ?, 'AUD', ?, ?, 'completed')
+      VALUES (?, ?, 'bill_payment', ?, 'USD', ?, ?, 'completed')
     `);
     const txnInfo = txnInsert.run(account_id, req.session.userId, payAmount, `Bill Payment: ${biller_name}`, reference_number);
     const txnId = txnInfo.lastInsertRowid;
@@ -176,8 +176,8 @@ router.post('/pay', requireAuth, requireVerified, async (req, res) => {
   }
 
   req.session.success = status === 'completed' 
-    ? `Bill payment of $${payAmount.toLocaleString('en-AU')} to ${biller_name} completed successfully!`
-    : `Bill payment of $${payAmount.toLocaleString('en-AU')} has been submitted for approval.`;
+    ? `Bill payment of $${payAmount.toLocaleString('en-US')} to ${biller_name} completed successfully!`
+    : `Bill payment of $${payAmount.toLocaleString('en-US')} has been submitted for approval.`;
   res.redirect('/billpay');
 });
 
@@ -271,7 +271,7 @@ router.post('/deposit', requireAuth, requireVerified, async (req, res) => {
 
   const insert = db.prepare(`
     INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, reference, status)
-    VALUES (?, ?, 'deposit', ?, 'AUD', ?, ?, ?)
+    VALUES (?, ?, 'deposit', ?, 'USD', ?, ?, ?)
   `);
   const txnInfo = insert.run(account_id, req.session.userId, depositAmount, description || `Deposit from ${source || 'Bank Transfer'}`, reference || '', status);
   const txnId = txnInfo.lastInsertRowid;
@@ -299,8 +299,8 @@ router.post('/deposit', requireAuth, requireVerified, async (req, res) => {
   queueTransactionEmail(txnId, status === 'completed' ? 'A credit has been applied to your account.' : 'Your deposit is pending approval.');
 
   req.session.success = status === 'completed'
-    ? `Successfully deposited $${depositAmount.toLocaleString('en-AU')}!`
-    : `Deposit of $${depositAmount.toLocaleString('en-AU')} submitted for approval.`;
+    ? `Successfully deposited $${depositAmount.toLocaleString('en-US')}!`
+    : `Deposit of $${depositAmount.toLocaleString('en-US')} submitted for approval.`;
   res.redirect('/user/dashboard');
 });
 
@@ -345,7 +345,7 @@ router.post('/withdraw', requireAuth, requireVerified, async (req, res) => {
 
   const insert = db.prepare(`
     INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, reference, recipient_name, status)
-    VALUES (?, ?, 'withdrawal', ?, 'AUD', ?, ?, ?, ?)
+    VALUES (?, ?, 'withdrawal', ?, 'USD', ?, ?, ?, ?)
   `);
   const txnInfo = insert.run(account_id, req.session.userId, withdrawAmount, description || `Withdrawal via ${method}`, reference || '', destination || '', status);
   const txnId = txnInfo.lastInsertRowid;
@@ -371,8 +371,8 @@ router.post('/withdraw', requireAuth, requireVerified, async (req, res) => {
   queueTransactionEmail(txnId, status === 'completed' ? 'A debit has been applied to your account.' : 'Your withdrawal is pending approval.');
 
   req.session.success = status === 'completed'
-    ? `Withdrawal of $${withdrawAmount.toLocaleString('en-AU')} completed!`
-    : `Withdrawal of $${withdrawAmount.toLocaleString('en-AU')} submitted for approval.`;
+    ? `Withdrawal of $${withdrawAmount.toLocaleString('en-US')} completed!`
+    : `Withdrawal of $${withdrawAmount.toLocaleString('en-US')} submitted for approval.`;
   res.redirect('/user/dashboard');
 });
 

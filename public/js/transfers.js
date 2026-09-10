@@ -51,7 +51,7 @@ function setupIntlTransfer(form) {
   const currency = form.querySelector('[name=currency]');
 
   const AUD_TO_FOREIGN = {
-    AUD: 1, USD: 0.66, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
+    USD: 1, USD: 0.66, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
     SGD: 0.88, HKD: 5.15, CAD: 0.89, INR: 54.80, CNY: 4.75
   };
 
@@ -84,7 +84,7 @@ function setupIntlTransfer(form) {
 
   form.addEventListener('submit', e => {
     const aud = parseFloat(amountAud.value);
-    if (aud < 100) { e.preventDefault(); alert('Minimum international transfer is $100 AUD.'); return; }
+    if (aud < 100) { e.preventDefault(); alert('Minimum international transfer is $100 USD.'); return; }
     const country = form.querySelector('[name=country]').value;
     if (!country) { e.preventDefault(); alert('Please select destination country.'); return; }
     const swift = form.querySelector('[name=swift_code]').value;

@@ -79,7 +79,7 @@
           <div style="padding:13px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
             <div>
               <div style="font-weight:600;"><%= a.account_type %></div>
-              <div style="font-size:0.78rem;color:var(--text-light);font-family:monospace;">BSB <%= a.bsb %> • <%= a.account_number %></div>
+              <div style="font-size:0.78rem;color:var(--text-light);font-family:monospace;">Routing <%= a.bsb %> • <%= a.account_number %></div>
             </div>
             <div style="text-align:right;"><div style="font-weight:800;"><%= currency(a.balance) %></div>
             <span class="status-badge status-<%= a.status %>" style="font-size:0.65rem;"><%= a.status %></span></div>
@@ -109,10 +109,10 @@
     <div class="card-header"><h3 class="card-title">🏦 User Accounts</h3>
       <button class="btn btn-primary btn-sm" onclick="document.getElementById('openAccModal').classList.add('active')">➕ Open Account</button>
     </div>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Type</th><th>BSB • Number</th><th style="text-align:right;">Balance</th><th>Status</th><th>Opened</th><th>Actions</th></tr></thead>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Type</th><th>Routing • Number</th><th style="text-align:right;">Balance</th><th>Status</th><th>Opened</th><th>Actions</th></tr></thead>
     <tbody><% (accounts||[]).forEach(a => { %>
       <tr><td><strong><%= a.account_type %></strong></td>
-      <td style="font-family:monospace;">BSB <%= a.bsb %> • <%= a.account_number %></td>
+      <td style="font-family:monospace;">Routing <%= a.bsb %> • <%= a.account_number %></td>
       <td style="text-align:right;font-weight:700;"><%= currency(a.balance) %></td>
       <td><span class="status-badge status-<%= a.status %>"><%= a.status %></span></td>
       <td><%= moment(a.opened_date || a.created_at).format('DD MMM YYYY') %></td>
@@ -263,7 +263,7 @@
       </div>
       <div class="form-grid">
         <div class="form-group"><label class="form-label">DOB</label><input type="date" name="date_of_birth" value="<%= customer.date_of_birth || '' %>" class="form-input"></div>
-        <div class="form-group"><label class="form-label">Country</label><input type="text" name="country" value="<%= customer.country || 'Australia' %>" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Country</label><input type="text" name="country" value="<%= customer.country || 'United States' %>" class="form-input"></div>
       </div>
       <div class="form-group"><label class="form-label">Address</label><input type="text" name="address" value="<%= customer.address || '' %>" class="form-input"></div>
       <div class="form-grid">
@@ -271,7 +271,7 @@
         <div class="form-group"><label class="form-label">State</label>
           <select name="state" class="form-select">
             <option value="" <%= !customer.state ? 'selected' : '' %>></option>
-            <option value="NSW" <%= customer.state === 'NSW' ? 'selected' : '' %>>NSW</option>
+            <option value="GA" <%= customer.state === 'GA' ? 'selected' : '' %>>GA</option>
             <option value="VIC" <%= customer.state === 'VIC' ? 'selected' : '' %>>VIC</option>
             <option value="QLD" <%= customer.state === 'QLD' ? 'selected' : '' %>>QLD</option>
             <option value="SA" <%= customer.state === 'SA' ? 'selected' : '' %>>SA</option>
@@ -281,7 +281,7 @@
             <option value="ACT" <%= customer.state === 'ACT' ? 'selected' : '' %>>ACT</option>
           </select>
         </div>
-        <div class="form-group"><label class="form-label">Postcode</label><input type="text" name="postcode" value="<%= customer.postcode || '' %>" class="form-input" maxlength="4"></div>
+        <div class="form-group"><label class="form-label">ZIP code</label><input type="text" name="postcode" value="<%= customer.postcode || '' %>" class="form-input" maxlength="4"></div>
       </div>
       <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
         <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" name="is_verified" class="form-checkbox" <%= customer.is_verified?'checked':'' %>><span>Verified</span></label>

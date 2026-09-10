@@ -110,8 +110,8 @@ function addAuditLog(adminId, action, targetType, targetId, details, ip) {
   `).run(adminId, action, targetType, targetId, details, ip);
 }
 
-function formatCurrency(amount, currency = 'AUD') {
-  return new Intl.NumberFormat('en-AU', {
+function formatCurrency(amount, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency
   }).format(amount || 0);

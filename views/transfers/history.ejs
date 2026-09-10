@@ -22,7 +22,7 @@
       <span class="filter-label">Type</span>
       <select class="form-select" id="typeFilter">
         <option value="">All Types</option>
-        <option value="local_transfer">🇦🇺 Local Transfer</option>
+        <option value="local_transfer">🇺🇸 Local Transfer</option>
         <option value="international_transfer">🌍 International</option>
         <option value="deposit">⬇️ Deposit</option>
         <option value="withdrawal">⬆️ Withdrawal</option>
@@ -59,7 +59,7 @@
           <th>Type</th>
           <th>Description</th>
           <th>Reference</th>
-          <th style="text-align:right;">Amount (AUD)</th>
+          <th style="text-align:right;">Amount (USD)</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -72,7 +72,7 @@
           const isOut = ['withdrawal','local_transfer','international_transfer','bill_payment','loan_payment','admin_adjustment'].includes(tx.transaction_type) && parseFloat(tx.amount) < 0 || ['withdrawal','local_transfer','international_transfer','bill_payment','loan_payment'].includes(tx.transaction_type);
           const amt = Math.abs(parseFloat(tx.amount));
           const displayType = tx.transaction_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          const typeIcon = tx.transaction_type.includes('international') ? '🌍' : tx.transaction_type.includes('local') ? '🇦🇺' : tx.transaction_type === 'deposit' ? '⬇️' : tx.transaction_type === 'withdrawal' ? '⬆️' : tx.transaction_type === 'bill_payment' ? '📄' : tx.transaction_type === 'loan_payment' ? '💳' : tx.transaction_type === 'loan_disbursement' ? '💸' : '💰';
+          const typeIcon = tx.transaction_type.includes('international') ? '🌍' : tx.transaction_type.includes('local') ? '🇺🇸' : tx.transaction_type === 'deposit' ? '⬇️' : tx.transaction_type === 'withdrawal' ? '⬆️' : tx.transaction_type === 'bill_payment' ? '📄' : tx.transaction_type === 'loan_payment' ? '💳' : tx.transaction_type === 'loan_disbursement' ? '💸' : '💰';
         %>
           <tr class="tx-row" style="cursor:pointer;" onclick="location.href='/transfers/<%= tx.id %>'">
             <td><%= moment(tx.created_at).format('DD MMM YYYY HH:mm') %></td>

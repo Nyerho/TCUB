@@ -4,7 +4,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
   <div>
     <h2 style="margin:0;">📄 Bills & Payments</h2>
-    <p style="margin:4px 0 0;color:var(--text-gray);">BPAY®, scheduled payments, deposits & withdrawals.</p>
+    <p style="margin:4px 0 0;color:var(--text-gray);">online bill pay®, scheduled payments, deposits & withdrawals.</p>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <a href="/billpay/pay" class="btn btn-primary">➕ Pay Bill</a>
@@ -14,7 +14,7 @@
 </div>
 
 <div class="quick-actions">
-  <a href="/billpay/pay" class="quick-action"><div class="quick-action-icon">📄</div><span class="quick-action-label">Pay Bill (BPAY)</span></a>
+  <a href="/billpay/pay" class="quick-action"><div class="quick-action-icon">📄</div><span class="quick-action-label">Pay Bill (online bill pay)</span></a>
   <a href="/billpay/scheduled" class="quick-action"><div class="quick-action-icon">📅</div><span class="quick-action-label">Scheduled</span></a>
   <a href="/billpay/deposit/new" class="quick-action"><div class="quick-action-icon">⬇️</div><span class="quick-action-label">Deposit</span></a>
   <a href="/billpay/withdraw/new" class="quick-action"><div class="quick-action-icon">⬆️</div><span class="quick-action-label">Withdraw</span></a>
@@ -42,7 +42,7 @@
                 <td><%= b.due_date ? moment(b.due_date).format('DD MMM') : moment(b.created_at).format('DD MMM') %></td>
                 <td>
                   <div style="font-weight:600;font-size:0.9rem;"><%= b.biller_name || b.description || 'Payment' %></div>
-                  <% if (b.biller_code) { %><div style="font-size:0.75rem;color:var(--text-light);">BPAY Code: <%= b.biller_code %></div><% } %>
+                  <% if (b.biller_code) { %><div style="font-size:0.75rem;color:var(--text-light);">online bill pay Code: <%= b.biller_code %></div><% } %>
                 </td>
                 <td style="font-family:monospace;font-size:0.82rem;color:var(--text-gray);"><%= b.customer_ref || '—' %></td>
                 <td style="text-align:right;font-weight:700;color:var(--danger);">-<%= currency(b.amount) %></td>
@@ -73,7 +73,7 @@
                 <td><%= moment(b.paid_at || b.completed_at || b.created_at).format('DD MMM YYYY') %></td>
                 <td>
                   <div style="font-weight:600;font-size:0.9rem;"><%= b.biller_name || b.description || 'Bill Payment' %></div>
-                  <% if (b.biller_code) { %><div style="font-size:0.75rem;color:var(--text-light);">BPAY: <%= b.biller_code %></div><% } %>
+                  <% if (b.biller_code) { %><div style="font-size:0.75rem;color:var(--text-light);">online bill pay: <%= b.biller_code %></div><% } %>
                 </td>
                 <td style="font-family:monospace;font-size:0.82rem;color:var(--text-gray);"><%= b.customer_ref || '—' %></td>
                 <td style="text-align:right;font-weight:700;color:var(--danger);">-<%= currency(b.amount) %></td>
@@ -98,7 +98,7 @@
             </div>
             <div style="flex:1;min-width:0;">
               <div style="font-weight:600;font-size:0.88rem;"><%= biller.name %></div>
-              <div style="font-size:0.72rem;color:var(--text-light);">BPAY <%= biller.code %></div>
+              <div style="font-size:0.72rem;color:var(--text-light);">online bill pay <%= biller.code %></div>
             </div>
             <div style="color:var(--primary);font-weight:700;">→</div>
           </div>
@@ -107,11 +107,11 @@
     </div>
 
     <div class="card">
-      <div class="card-header"><h3 class="card-title">💡 BPAY Info</h3></div>
+      <div class="card-header"><h3 class="card-title">💡 online bill pay Info</h3></div>
       <div class="card-body" style="padding:0;">
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
-          <div style="font-weight:700;font-size:0.9rem;">⚡ 24/7 via BPAY</div>
-          <div style="font-size:0.82rem;color:var(--text-light);">Pay any of 45,000+ Australian billers</div>
+          <div style="font-weight:700;font-size:0.9rem;">⚡ 24/7 via online bill pay</div>
+          <div style="font-size:0.82rem;color:var(--text-light);">Pay any of 45,000+ American billers</div>
         </div>
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
           <div style="font-weight:700;font-size:0.9rem;">⏰ Scheduled payments</div>
@@ -119,7 +119,7 @@
         </div>
         <div style="padding:14px 20px;">
           <div style="font-weight:700;font-size:0.9rem;">🔒 No fees</div>
-          <div style="font-size:0.82rem;color:var(--text-light);">$0 fee for all BPAY payments</div>
+          <div style="font-size:0.82rem;color:var(--text-light);">$0 fee for all online bill pay payments</div>
         </div>
       </div>
     </div>

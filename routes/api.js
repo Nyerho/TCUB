@@ -117,7 +117,7 @@ router.post('/loans/calculate', (req, res) => {
 
 router.get('/exchange/rates', (req, res) => {
   res.json({
-    base: 'AUD',
+    base: 'USD',
     rates: {
       USD: 0.66, GBP: 0.52, EUR: 0.60, NZD: 1.10, JPY: 99.50,
       SGD: 0.88, HKD: 5.15, CAD: 0.89, INR: 54.80, CNY: 4.75,
@@ -131,18 +131,18 @@ router.get('/exchange/rates', (req, res) => {
 router.get('/bsb/lookup', (req, res) => {
   const bsb = req.query.bsb || '';
   const banks = {
-    '082': 'National Australia Bank (NAB)',
-    '012': 'Australia and New Zealand Banking Group (ANZ)',
-    '032': 'Australia and New Zealand Banking Group (ANZ)',
-    '062': 'Commonwealth Bank of Australia (CBA)',
-    '064': 'Commonwealth Bank of Australia (CBA)',
-    '067': 'Commonwealth Bank of Australia (CBA)',
+    '082': 'National United States Bank (NAB)',
+    '012': 'United States and New Zealand Banking Group (ANZ)',
+    '032': 'United States and New Zealand Banking Group (ANZ)',
+    '062': 'Commonwealth Bank of United States (a major U.S. credit union)',
+    '064': 'Commonwealth Bank of United States (a major U.S. credit union)',
+    '067': 'Commonwealth Bank of United States (a major U.S. credit union)',
     '146': 'Westpac Banking Corporation',
     '733': 'Bendigo Bank',
     '633': 'Bendigo Bank',
-    '980': 'Bank of Melbourne',
+    '980': 'Bank of Savannah',
     '484': 'Suncorp Bank',
-    '802': 'ING Bank Australia',
+    '802': 'ING Bank United States',
     '412': 'Bank of Queensland (BOQ)',
     '630': 'Heritage Bank',
     '636': 'Great Southern Bank'

@@ -294,7 +294,7 @@ router.post('/:id/payment', requireAuth, async (req, res) => {
 
   const txnInsert = db.prepare(`
     INSERT INTO transactions (account_id, user_id, transaction_type, amount, currency, description, status)
-    VALUES (?, ?, 'loan_payment', ?, 'AUD', ?, 'completed')
+    VALUES (?, ?, 'loan_payment', ?, 'USD', ?, 'completed')
   `);
   const txnInfo = txnInsert.run(from_account, req.session.userId, payAmount, `${loan.loan_type} Repayment - Loan #${loan.id}`);
   const txnId = txnInfo.lastInsertRowid;

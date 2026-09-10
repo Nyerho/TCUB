@@ -18,7 +18,7 @@
       <% } %>
       <form method="POST" action="/transfers/international" id="intlTransferForm">
         <div class="form-group">
-          <label class="form-label">From Account (AUD) *</label>
+          <label class="form-label">From Account (USD) *</label>
           <select name="from_account" required class="form-select">
             <% accounts.forEach(acc => { %>
               <option value="<%= acc.id %>" <%= (typeof selectedAccountId !== 'undefined' && selectedAccountId === acc.id) ? 'selected' : '' %>>
@@ -32,7 +32,7 @@
           <label class="form-label">Destination Currency *</label>
           <select name="currency" required class="form-select" id="currencySelect">
             <% Object.keys(rates).forEach(curr => { %>
-              <option value="<%= curr %>" data-rate="<%= rates[curr] %>"><%= curr %> • 1 AUD = <%= rates[curr] %> <%= curr %></option>
+              <option value="<%= curr %>" data-rate="<%= rates[curr] %>"><%= curr %> • 1 USD = <%= rates[curr] %> <%= curr %></option>
             <% }) %>
           </select>
         </div>
@@ -48,7 +48,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">SWIFT / BIC Code *</label>
-            <input type="text" name="swift_code" required class="form-input" placeholder="e.g. NATAUS33" maxlength="11">
+            <input type="text" name="swift_code" required class="form-input" placeholder="e.g. NATUSA33" maxlength="11">
           </div>
         </div>
 
@@ -69,12 +69,12 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Amount (AUD) to send *</label>
+          <label class="form-label">Amount (USD) to send *</label>
           <div style="position:relative;">
             <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);font-weight:600;color:var(--text-gray);">$</span>
             <input type="number" name="amount" id="amountIntl" required min="100" step="0.01" value="500" class="form-input" style="padding-left:32px;">
           </div>
-          <span class="form-hint">Min. $100 AUD. Fixed $25 fee. Large amounts may require approval.</span>
+          <span class="form-hint">Min. $100 USD. Fixed $25 fee. Large amounts may require approval.</span>
         </div>
 
         <div class="form-group">
@@ -108,7 +108,7 @@
           <div style="width:28px;height:28px;border-radius:50%;background:var(--primary-alpha);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0;">1</div>
           <div>
             <div style="font-weight:600;">Sent today</div>
-            <div style="font-size:0.82rem;color:var(--text-light);">We process your transfer and debit AUD</div>
+            <div style="font-size:0.82rem;color:var(--text-light);">We process your transfer and debit USD</div>
           </div>
         </div>
         <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start;">
@@ -141,7 +141,7 @@
         </div>
         <div style="display:flex;justify-content:space-between;padding:14px 20px;">
           <span>Daily limit</span>
-          <strong>$50,000 AUD</strong>
+          <strong>$50,000 USD</strong>
         </div>
       </div>
     </div>
@@ -160,12 +160,12 @@ function updateIntlSummary() {
   const needsApproval = aud >= 5000;
   document.getElementById('intlSummaryBox').innerHTML = `
     <div style="padding:4px 0 16px;border-bottom:1px dashed var(--border);margin-bottom:16px;">
-      <div style="font-size:0.78rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">You Send (AUD)</div>
-      <div style="font-size:2rem;font-weight:800;color:var(--danger);">A$${aud.toLocaleString('en-AU', {minimumFractionDigits: 2})}</div>
+      <div style="font-size:0.78rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">You Send (USD)</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--danger);">A$${aud.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
     </div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:0.9rem;">
       <span style="color:var(--text-gray);">Exchange rate</span>
-      <strong>1 AUD = ${rate} ${curr}</strong>
+      <strong>1 USD = ${rate} ${curr}</strong>
     </div>
     <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:0.9rem;">
       <span style="color:var(--text-gray);">Service fee</span>
@@ -173,11 +173,11 @@ function updateIntlSummary() {
     </div>
     <div style="padding:14px 0 4px;border-top:2px solid var(--border);margin-top:8px;">
       <div style="font-size:0.78rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Recipient receives</div>
-      <div style="font-size:1.5rem;font-weight:800;color:var(--success);">${curr} ${foreignAmt.toLocaleString('en-AU', {minimumFractionDigits: 2})}</div>
+      <div style="font-size:1.5rem;font-weight:800;color:var(--success);">${curr} ${foreignAmt.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
     </div>
     <div style="padding-top:8px;border-top:1px solid var(--border);margin-top:12px;display:flex;justify-content:space-between;">
-      <span style="font-weight:700;">Total cost (AUD)</span>
-      <strong style="color:var(--primary);font-size:1.1rem;">A$${totalAud.toLocaleString('en-AU', {minimumFractionDigits: 2})}</strong>
+      <span style="font-weight:700;">Total cost (USD)</span>
+      <strong style="color:var(--primary);font-size:1.1rem;">A$${totalAud.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
     </div>
     ${needsApproval ? `<div class="alert alert-warning" style="margin-top:16px;margin-bottom:0;"><span class="alert-icon">⏳</span><div class="alert-content"><div class="alert-title">Approval Required</div><p class="alert-message" style="margin:0;">Large transfers require security review. Usually approved within 4 business hours.</p></div></div>` : ''}
   `;

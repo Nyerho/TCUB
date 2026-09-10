@@ -72,8 +72,8 @@ function buildCardTypeViewModel(cardType) {
   return {
     ...cardType,
     desc: isCredit
-      ? `Premium ${cardType.name.toLowerCase()} with flexible credit access and Australian support.`
-      : `${cardType.name} for everyday banking, contactless purchases, and ATM access across Australia.`,
+      ? `Premium ${cardType.name.toLowerCase()} with flexible credit access and American support.`
+      : `${cardType.name} for everyday banking, contactless purchases, and ATM access across United States.`,
     fee: isCredit ? `$${cardType.annual_fee} / year` : `$${cardType.annual_fee} / year`,
     fee_raw: cardType.annual_fee || 0,
     interest: isCredit ? `${cardType.interest_rate.toFixed(2)}% p.a.` : 'No purchase interest',

@@ -4,7 +4,7 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="card-header"><h3 class="card-title">📄 Pay a Bill (BPAY®)</h3></div>
+    <div class="card-header"><h3 class="card-title">📄 Pay a Bill (online bill pay®)</h3></div>
     <div class="card-body">
       <form method="POST" action="/billpay/pay">
         <div class="form-group">
@@ -21,7 +21,7 @@
           <select class="form-select" id="billerSelect" onchange="fillBiller()">
             <option value="">Enter biller details manually...</option>
             <% billers.forEach(biller => { %>
-              <option value="<%= biller.code %>" data-name="<%= biller.name %>" <%= selectedBiller && selectedBiller.code === biller.code ? 'selected' : '' %>><%= biller.name %> — BPAY Code <%= biller.code %></option>
+              <option value="<%= biller.code %>" data-name="<%= biller.name %>" <%= selectedBiller && selectedBiller.code === biller.code ? 'selected' : '' %>><%= biller.name %> — online bill pay Code <%= biller.code %></option>
             <% }) %>
           </select>
         </div>
@@ -32,7 +32,7 @@
             <input type="text" name="biller_name" id="billerName" required class="form-input" placeholder="e.g. Telstra" value="<%= selectedBiller ? selectedBiller.name : '' %>">
           </div>
           <div class="form-group">
-            <label class="form-label">Biller Code (BPAY) *</label>
+            <label class="form-label">Biller Code (online bill pay) *</label>
             <input type="text" name="biller_code" id="billerCode" required class="form-input" placeholder="e.g. 900001" maxlength="10" value="<%= selectedBiller ? selectedBiller.code : '' %>">
           </div>
         </div>
@@ -43,7 +43,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Payment Amount (AUD) *</label>
+          <label class="form-label">Payment Amount (USD) *</label>
           <div style="position:relative;">
             <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);font-weight:600;color:var(--text-gray);">$</span>
             <input type="number" name="amount" id="billAmount" required min="1" step="0.01" value="150" class="form-input" style="padding-left:32px;">
@@ -68,8 +68,8 @@
         <div class="alert alert-info" style="margin-bottom:20px;">
           <span class="alert-icon">ℹ️</span>
           <div class="alert-content">
-            <div class="alert-title">BPAY Information</div>
-            <p class="alert-message" style="margin:0;font-size:0.85rem;">BPAY payments before 6pm AEST are processed same business day. Scheduled payments are processed 2am AEST on the due date.</p>
+            <div class="alert-title">online bill pay Information</div>
+            <p class="alert-message" style="margin:0;font-size:0.85rem;">online bill pay payments before 6pm ET are processed same business day. Scheduled payments are processed 2am ET on the due date.</p>
           </div>
         </div>
 
@@ -115,8 +115,8 @@
 <script>
 function updateBillDisplay() {
   const amt = parseFloat(document.getElementById('billAmount').value) || 0;
-  document.getElementById('amtDisplay').textContent = amt.toLocaleString('en-AU', {minimumFractionDigits: 2});
-  document.getElementById('totalDisplay').textContent = amt.toLocaleString('en-AU', {minimumFractionDigits: 2});
+  document.getElementById('amtDisplay').textContent = amt.toLocaleString('en-US', {minimumFractionDigits: 2});
+  document.getElementById('totalDisplay').textContent = amt.toLocaleString('en-US', {minimumFractionDigits: 2});
 }
 function toggleDate() {
   document.getElementById('dateWrap').style.display = document.querySelector('[name=payment_time]').value === 'scheduled' ? 'block' : 'none';

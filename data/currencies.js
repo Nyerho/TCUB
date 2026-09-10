@@ -1,6 +1,5 @@
 module.exports = [
-  { code: 'AUD', name: 'Australian Dollar', symbol: '$', rate: 1.00 },
-  { code: 'USD', name: 'US Dollar', symbol: '$', rate: 0.66 },
+  { code: 'USD', name: 'U.S. Dollar', symbol: '$', rate: 1.00 },
   { code: 'GBP', name: 'British Pound', symbol: '£', rate: 0.52 },
   { code: 'EUR', name: 'Euro', symbol: '€', rate: 0.60 },
   { code: 'NZD', name: 'New Zealand Dollar', symbol: '$', rate: 1.10 },

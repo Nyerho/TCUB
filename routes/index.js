@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
   };
 
   res.render('index', {
-    title: 'Think Union Credit Bank - Australian Banking Excellence',
+    title: 'Think Union Credit Bank - Georgia Credit Union Banking',
     page: 'home',
     stats
   });
