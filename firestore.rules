@@ -1,3 +1,5 @@
+// TCUB Firestore rules. Paste this entire file into Firebase Console -> Firestore Database -> Rules.
+// Admin access is granted by the document admins/<Firebase Auth UID>.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {

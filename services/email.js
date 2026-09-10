@@ -11,7 +11,7 @@ function getEmailConfig() {
   const port = Number(process.env.BREVO_SMTP_PORT || process.env.SMTP_PORT || 587);
   const user = process.env.BREVO_SMTP_LOGIN || process.env.BREVO_SMTP_USER || process.env.SMTP_USER || process.env.BREVO_LOGIN || '';
   const pass = process.env.BREVO_SMTP_PASSWORD || process.env.SMTP_PASS || process.env.BREVO_SMTP_KEY || '';
-  const from = process.env.EMAIL_FROM || process.env.BREVO_FROM_EMAIL || process.env.SMTP_FROM || 'Think Union Credit Bank <no-reply@thinkunioncreditbank.xyz>';
+  const from = process.env.EMAIL_FROM || process.env.BREVO_FROM_EMAIL || process.env.SMTP_FROM || 'Think Union Credit Bank <no-reply@thinkcreditunionbank.xyz>';
   const replyTo = process.env.EMAIL_REPLY_TO || process.env.BREVO_REPLY_TO || process.env.SMTP_REPLY_TO || undefined;
   return { host, port, user, pass, from, replyTo };
 }

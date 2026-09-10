@@ -1,11 +1,26 @@
-const JIVO_WIDGET_ID = 'f76XwJf0YP';
+const JIVO_WIDGET_ID = window.__JIVO_WIDGET_ID__ || '';
+
+function ensureJivoLauncher() {
+  if (!JIVO_WIDGET_ID || document.getElementById('tcub-jivo-launcher')) return;
+  const button = document.createElement('button');
+  button.id = 'tcub-jivo-launcher';
+  button.type = 'button';
+  button.setAttribute('aria-label', 'Open Think Union Credit Bank chat');
+  button.title = 'Chat with support';
+  button.innerHTML = '<span aria-hidden="true">💬</span>';
+  button.style.cssText = 'position:fixed;right:22px;bottom:22px;z-index:9998;width:54px;height:54px;border:0;border-radius:50%;background:#C8102E;color:#fff;font-size:24px;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer';
+  button.addEventListener('click', () => {
+    if (window.jivo_api && typeof window.jivo_api.open === 'function') window.jivo_api.open();
+  });
+  document.body.appendChild(button);
+}
 
 function getJivoScriptSelector() {
   return `script[src*="code.jivosite.com/widget/${JIVO_WIDGET_ID}"]`;
 }
 
 function ensureJivoWidgetLoaded() {
-  if (document.querySelector(getJivoScriptSelector())) {
+  if (!JIVO_WIDGET_ID || document.querySelector(getJivoScriptSelector())) {
     return;
   }
 
@@ -90,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     ensureJivoWidgetLoaded();
+    ensureJivoLauncher();
   } catch (initErr) {
     console.error('[common.js DOMContentLoaded] INIT ERROR:', initErr);
   }

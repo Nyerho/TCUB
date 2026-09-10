@@ -4,7 +4,7 @@ const { getFirestore, hasAdminCredentials, logFirestoreDiagnostics, getResolvedP
 const USERS_COLLECTION = process.env.FIRESTORE_USERS_COLLECTION || 'users';
 const ACCOUNTS_COLLECTION = process.env.FIRESTORE_ACCOUNTS_COLLECTION || 'accounts';
 const ADMINS_COLLECTION = process.env.FIREBASE_ADMIN_COLLECTION || 'admins';
-const ADMIN_DOC_ID = process.env.FIREBASE_ADMIN_DOC_ID || null;
+const ADMIN_DOC_ID = process.env.FIREBASE_ADMIN_DOC_ID || process.env.FIREBASE_ADMIN_UID || 'rGgEI67ClbM7dfI6GsGMaAC2cpn2';
 
 function isFirestoreEnabled() {
   const enabled = hasAdminCredentials() && Boolean(getFirestore());
@@ -473,13 +473,16 @@ async function syncConfiguredAdminToFirestore() {
     return false;
   }
 
-  const adminUser = db.prepare('SELECT * FROM users WHERE is_admin = 1 ORDER BY id LIMIT 1').get();
+  const adminUser = db.prepare(
+    'SELECT * FROM users WHERE is_admin = 1 ORDER BY id LIMIT 1'
+  ).get();
   if (!adminUser) {
     return false;
   }
 
   await syncUserToFirestore(adminUser);
   await firestore.collection(ADMINS_COLLECTION).doc(ADMIN_DOC_ID).set({
+    auth_uid: ADMIN_DOC_ID,
     user_id: asInt(adminUser.id),
     user_ref: String(adminUser.id),
     email: (adminUser.email || '').trim().toLowerCase(),
