@@ -221,6 +221,7 @@ router.post('/register', [
 
   let firestoreSyncAttempted = false;
   let firestoreSyncSkipped = false;
+  const vercelDeployment = Boolean(process.env.VERCEL);
   const requestTag = `[TCUB-REGISTER][${normalizedEmail}][sql_user=${result.lastInsertRowid}]`;
 
   console.log(`${requestTag} step=local_sqlite_insert status=ok account_number=${accountNumber} serverless=${vercelDeployment}`);
