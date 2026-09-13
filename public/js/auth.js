@@ -36,17 +36,51 @@ document.addEventListener('DOMContentLoaded', () => {
     pwd && pwd.addEventListener('input', checkMatch);
     pwdC && pwdC.addEventListener('input', checkMatch);
 
+    const submitButton = regForm.querySelector('button[type=submit]');
+    const formNotice = document.createElement('div');
+    formNotice.className = 'form-error';
+    formNotice.setAttribute('role', 'alert');
+    formNotice.style.display = 'none';
+    formNotice.style.marginBottom = '12px';
+    regForm.insertBefore(formNotice, regForm.firstChild);
+
+    regForm.addEventListener('invalid', event => {
+      event.preventDefault();
+      const field = event.target;
+      const label = field.closest('.form-group')?.querySelector('label')?.textContent?.replace('*', '').trim()
+        || field.name || 'required field';
+      formNotice.textContent = `Please complete the ${label} field before continuing.`;
+      formNotice.style.display = 'block';
+      field.focus({ preventScroll: true });
+    }, true);
+
     regForm.addEventListener('submit', e => {
+      formNotice.style.display = 'none';
       const pwdVal = pwd.value;
       if (pwdVal.length < 8) {
         e.preventDefault();
-        alert('Password must be at least 8 characters long.');
+        formNotice.textContent = 'Password must be at least 8 characters long.';
+        formNotice.style.display = 'block';
+        pwd.focus();
         return false;
       }
       if (pwdVal !== pwdC.value) {
         e.preventDefault();
-        alert('Passwords do not match.');
+        formNotice.textContent = 'Passwords do not match.';
+        formNotice.style.display = 'block';
+        pwdC.focus();
         return false;
+      }
+      if (!regForm.querySelector('[name=terms]').checked) {
+        e.preventDefault();
+        formNotice.textContent = 'Please accept the Terms & Conditions before opening your account.';
+        formNotice.style.display = 'block';
+        regForm.querySelector('[name=terms]').focus();
+        return false;
+      }
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submitting application…';
       }
     });
   }
