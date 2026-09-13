@@ -20,7 +20,8 @@ const {
   isFirestoreEnabled,
   syncUserBundleToFirestore,
   syncAccountToFirestore,
-  syncTransactionToFirestore
+  syncTransactionToFirestore,
+  hydratePendingKycFromFirestore
 } = require('../services/firestore-sync');
 
 const router = express.Router();
@@ -827,8 +828,16 @@ router.post('/users/:id/adjust-balance', requireAdmin, async (req, res) => {
   res.redirect(`/admin/users/${userId}`);
 });
 
-router.get('/approvals', requireAdmin, (req, res) => {
+router.get('/approvals', requireAdmin, async (req, res) => {
   const section = req.query.section || 'all';
+
+  if (section === 'all' || section === 'kyc') {
+    try {
+      await hydratePendingKycFromFirestore();
+    } catch (error) {
+      console.error('[admin] Failed to hydrate pending KYC:', error.message);
+    }
+  }
 
   const data = {
     kyc: section === 'all' || section === 'kyc' ? db.prepare(`

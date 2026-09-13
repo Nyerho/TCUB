@@ -738,6 +738,39 @@ async function syncKycSubmissionToFirestore(kycRecord) {
   return true;
 }
 
+
+async function hydratePendingKycFromFirestore() {
+  const firestore = getFirestore();
+  if (!firestore) return 0;
+  const snapshot = await firestore.collection('kyc').where('status', '==', 'pending').get();
+  let restored = 0;
+  for (const doc of snapshot.docs) {
+    const item = doc.data();
+    const localId = Number(item.local_id || doc.id);
+    if (!Number.isFinite(localId)) continue;
+    const exists = db.prepare('SELECT id FROM kyc WHERE id = ?').get(localId);
+    if (exists) continue;
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(Number(item.user_id));
+    if (!user) continue;
+    db.prepare(`
+      INSERT INTO kyc (id, user_id, document_type, document_number, document_front, document_back, document_selfie, id_expiry, status, submitted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(
+      localId,
+      Number(item.user_id),
+      item.document_type || '',
+      item.document_number || '',
+      item.document_front || '',
+      item.document_back || '',
+      item.document_selfie || '',
+      item.id_expiry || null,
+      item.submitted_at || new Date().toISOString()
+    );
+    restored++;
+  }
+  return restored;
+}
+
 module.exports = {
   isFirestoreEnabled,
   syncUserToFirestore,
@@ -754,5 +787,6 @@ module.exports = {
   firestoreUserExistsByEmail,
   getFirestoreDashboardCustomerStats,
   backfillLocalUsersToFirestore,
-  syncKycSubmissionToFirestore
+  syncKycSubmissionToFirestore,
+  hydratePendingKycFromFirestore
 };
