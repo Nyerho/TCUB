@@ -19,6 +19,52 @@
       </div>
     </div>
   <% } %>
+  <script>
+    // Submit marked admin forms without a full-page refresh. The server response is
+    // rendered back into the current admin shell, so edits appear immediately.
+    document.addEventListener('submit', async (event) => {
+      const form = event.target.closest('form[data-live-update="true"]');
+      if (!form || form.dataset.submitting === 'true') return;
+      event.preventDefault();
+      form.dataset.submitting = 'true';
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalLabel = submitButton ? submitButton.innerHTML : '';
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = 'Saving…';
+      }
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const currentShell = document.querySelector('.main');
+        const nextShell = parsed.querySelector('.main');
+        if (!currentShell || !nextShell) throw new Error('Updated admin page could not be rendered.');
+        currentShell.innerHTML = nextShell.innerHTML;
+        const nextUrl = new URL(response.url, window.location.origin);
+        window.history.pushState({}, '', nextUrl.pathname + nextUrl.search);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (error) {
+        form.dataset.submitting = 'false';
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalLabel;
+        }
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-danger';
+        notice.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;max-width:360px;';
+        notice.textContent = `Could not save changes: ${error.message}`;
+        document.body.appendChild(notice);
+        setTimeout(() => notice.remove(), 5000);
+      }
+    });
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
   <script src="/js/common.js"></script>
   <% if (typeof pageScripts !== 'undefined' && pageScripts) { pageScripts.forEach(s => { %>
