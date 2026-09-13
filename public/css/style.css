@@ -2836,3 +2836,69 @@ a:hover {
 /* TCUB white and lemon-green brand finish */
 .btn-primary, .brand-logo { color: #153018; }
 ::selection { background: #DDF59A; color: #153018; }
+
+/* Mobile admin forms: keep modal headers/actions visible while allowing the form body to scroll. */
+.modal {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 40px);
+  margin: auto;
+}
+
+.modal-dialog > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.modal-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.modal-header,
+.modal-footer {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .modal {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .modal-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    margin: 0 auto;
+    border-radius: var(--radius);
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 120px;
+  }
+
+  .content .card-body {
+    overflow-x: auto;
+  }
+}

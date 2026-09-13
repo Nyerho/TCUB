@@ -251,7 +251,7 @@
 <div class="modal" id="editUserModal"><div class="modal-dialog" style="max-width:640px;">
   <div class="modal-header"><h3 class="modal-title">✏️ Edit Customer Details</h3>
   <button class="modal-close" onclick="document.getElementById('editUserModal').classList.remove('active')">✕</button></div>
-  <form method="POST" action="/admin/users/<%= customer.id %>/update">
+  <form method="POST" action="/admin/users/<%= customer.id %>/update" data-live-update="true">
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" value="<%= customer.first_name %>" class="form-input"></div>
