@@ -221,7 +221,6 @@ router.post('/register', [
 
   let firestoreSyncAttempted = false;
   let firestoreSyncSkipped = false;
-  const vercelDeployment = Boolean(process.env.VERCEL);
   const requestTag = `[TCUB-REGISTER][${normalizedEmail}][sql_user=${result.lastInsertRowid}]`;
 
   console.log(`${requestTag} step=local_sqlite_insert status=ok account_number=${accountNumber} serverless=${vercelDeployment}`);
@@ -256,41 +255,25 @@ router.post('/register', [
     }
   } else {
     firestoreSyncSkipped = true;
-    console.warn(`${requestTag} step=firestore_sync status=SKIPPED reason=isFirestoreEnabled() returned false`);
-    if (vercelDeployment) {
-      console.warn(`${requestTag} VERCEL FIX: Visit https://<your-domain>/api/debug/firestore to see exactly which env var is invalid (private_key_valid / client_email etc). Then Vercel Dashboard → Settings → Environment Variables → set correctly → Redeploy.`);
+    console.error(`${requestTag} step=firestore_sync status=FAILED reason=Firebase Admin credentials are not configured`);
+    console.error(`${requestTag} registration refused: local-only accounts are disabled`);
+    try {
+      db.prepare('DELETE FROM accounts WHERE user_id = ?').run(result.lastInsertRowid);
+      db.prepare('DELETE FROM users WHERE id = ?').run(result.lastInsertRowid);
+    } catch (rollbackError) {
+      console.error(`${requestTag} rollback failed: ${String(rollbackError.message || rollbackError)}`);
     }
-    console.warn(
-      '============================================================\n' +
-      '  [AUTH REGISTER] WARNING: FIRESTORE SYNC SKIPPED\n' +
-      '  User was registered locally (SQLite) but NOT synced to Firestore.\n' +
-      '  This means the user will NOT appear in Firebase Console.\n' +
-      '  User ID: ' + result.lastInsertRowid + '\n' +
-      '  Email: ' + normalizedEmail + '\n' +
-      (vercelDeployment
-        ? '  VERCEL FIX: Visit /api/debug/firestore on your deployed site for the exact env var validation errors.\n'
-        : '  Local fix: Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in your .env.\n') +
-      '============================================================'
-    );
-  }
-
-  if (firestoreSyncSkipped && process.env.FIRESTORE_REQUIRE_SYNC_ON_REGISTER === 'true') {
-    console.warn(`${requestTag} step=local_sqlite_rollback reason=FIRESTORE_REQUIRE_SYNC_ON_REGISTER=true and sync skipped`);
-    db.prepare('DELETE FROM accounts WHERE user_id = ?').run(result.lastInsertRowid);
-    db.prepare('DELETE FROM users WHERE id = ?').run(result.lastInsertRowid);
-    const requireErr = 'Account creation could not be completed right now. The remote user database is unavailable. Please try again later.';
-    req.session.error = requireErr;
+    const configErr = 'Account creation is temporarily unavailable because the secure Firebase account service is not configured. Please try again later.';
+    req.session.error = configErr;
     return res.render('auth/register', {
       title: 'Open Account - Think Union Credit Bank',
       page: 'register',
       old: req.body,
-      error: requireErr
+      error: configErr
     });
   }
 
-  req.session.success = firestoreSyncSkipped
-    ? 'Account created locally! Note: Remote sync is currently unavailable. Your account will be synced when the service is restored. Please login to continue.'
-    : 'Account created successfully! Please login to continue.';
+  req.session.success = 'Account created successfully! Please login to continue.';
 
   try {
     const createdUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
