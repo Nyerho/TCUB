@@ -717,6 +717,27 @@ async function backfillLocalUsersToFirestore(limit = 500) {
   return stats;
 }
 
+
+async function syncKycSubmissionToFirestore(kycRecord) {
+  const firestore = getFirestore();
+  if (!firestore || !kycRecord) return false;
+  const docId = String(kycRecord.id);
+  await firestore.collection('kyc').doc(docId).set({
+    local_id: Number(kycRecord.id),
+    user_id: Number(kycRecord.user_id),
+    document_type: kycRecord.document_type || '',
+    document_number: kycRecord.document_number || '',
+    document_front: kycRecord.document_front || '',
+    document_back: kycRecord.document_back || '',
+    document_selfie: kycRecord.document_selfie || '',
+    id_expiry: kycRecord.id_expiry || null,
+    status: kycRecord.status || 'pending',
+    submitted_at: kycRecord.submitted_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }, { merge: true });
+  return true;
+}
+
 module.exports = {
   isFirestoreEnabled,
   syncUserToFirestore,
@@ -732,5 +753,6 @@ module.exports = {
   hydrateRecentCustomersFromFirestore,
   firestoreUserExistsByEmail,
   getFirestoreDashboardCustomerStats,
-  backfillLocalUsersToFirestore
+  backfillLocalUsersToFirestore,
+  syncKycSubmissionToFirestore
 };

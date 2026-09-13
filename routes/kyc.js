@@ -8,6 +8,7 @@ const {
   requireAuth,
   addNotification
 } = require('../middleware/auth');
+const { isFirestoreEnabled, syncKycSubmissionToFirestore } = require('../services/firestore-sync');
 
 const router = express.Router();
 
@@ -83,7 +84,7 @@ router.post('/submit', requireAuth, upload.fields([
   { name: 'document_front', maxCount: 1 },
   { name: 'document_back', maxCount: 1 },
   { name: 'document_selfie', maxCount: 1 }
-]), (req, res) => {
+]), async (req, res) => {
   const { document_type, document_number, id_expiry, document_front, document_back, document_selfie } = req.body;
   const selectedType = DOCUMENT_TYPES.find((doc) => doc.type === document_type);
 
@@ -124,7 +125,7 @@ router.post('/submit', requireAuth, upload.fields([
     return res.redirect('/kyc/submit');
   }
 
-  db.prepare(`
+  const inserted = db.prepare(`
     INSERT INTO kyc (user_id, document_type, document_number, document_front, document_back, document_selfie, id_expiry, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
   `).run(
@@ -136,6 +137,15 @@ router.post('/submit', requireAuth, upload.fields([
     selfieFile ? `uploads/kyc/${selfieFile.filename}` : '',
     id_expiry || null
   );
+
+  const kycRecord = db.prepare('SELECT * FROM kyc WHERE id = ?').get(inserted.lastInsertRowid);
+  if (isFirestoreEnabled()) {
+    try {
+      await syncKycSubmissionToFirestore(kycRecord);
+    } catch (error) {
+      console.error(`[KYC][${req.session.userId}] Firestore persistence failed:`, error.message);
+    }
+  }
 
   addNotification(req.session.userId, 'KYC Submitted', 'Your identity verification has been submitted for review.', 'info');
   req.session.success = 'KYC documents submitted successfully! Our team will review within 24 hours.';

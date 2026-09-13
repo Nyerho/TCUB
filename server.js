@@ -110,6 +110,33 @@ if (isServerless) {
   app.use(session(sessionConfig));
 }
 
+
+// Restore the lightweight user profile when a serverless request carries a valid
+// session userId but the optional profile object was not retained in the cookie.
+app.use(async (req, res, next) => {
+  if (req.session && req.session.userId && !req.session.user) {
+    try {
+      const user = db.prepare(
+        'SELECT id, first_name, last_name, email, is_admin, is_verified, is_frozen FROM users WHERE id = ?'
+      ).get(req.session.userId);
+      if (user) {
+        req.session.user = {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          is_admin: Number(user.is_admin) === 1 ? 1 : 0,
+          is_verified: Number(user.is_verified) === 1 ? 1 : 0,
+          is_frozen: Number(user.is_frozen) === 1 ? 1 : 0
+        };
+      }
+    } catch (error) {
+      console.error('[session] Failed to restore user profile:', error.message);
+    }
+  }
+  next();
+});
+
 (function runFirestoreStartupCheck() {
   console.log('\n============================================================');
   console.log('  THINK UNION CREDIT BANK - FIRESTORE STARTUP CHECK');
