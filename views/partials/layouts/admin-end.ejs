@@ -20,8 +20,8 @@
     </div>
   <% } %>
   <script>
-    // Submit marked admin forms without a full-page refresh. The server response is
-    // rendered back into the current admin shell, so edits appear immediately.
+    // Submit marked admin forms without a full-page refresh. Send URL-encoded form
+    // fields because Express parses URL-encoded and JSON bodies, not multipart FormData.
     document.addEventListener('submit', async (event) => {
       const form = event.target.closest('form[data-live-update="true"]');
       if (!form || form.dataset.submitting === 'true') return;
@@ -36,9 +36,12 @@
       try {
         const response = await fetch(form.action, {
           method: 'POST',
-          body: new FormData(form),
+          body: new URLSearchParams(new FormData(form)),
           credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+          }
         });
         if (!response.ok) throw new Error(`Request failed (${response.status})`);
         const html = await response.text();
