@@ -539,10 +539,17 @@ async function hydrateUserFromFirestoreByEmail(email) {
   const doc = snapshot.docs[0];
   const localUser = upsertLocalUser(doc.data(), doc.id);
   const hydrateUserId = localUser ? localUser.id : doc.id;
-  await Promise.all([
-    hydrateAccountsForUser(hydrateUserId),
-    hydrateTransactionsForUser(hydrateUserId)
-  ]);
+  if (localUser) {
+    const optionalHydrations = await Promise.allSettled([
+      hydrateAccountsForUser(hydrateUserId),
+      hydrateTransactionsForUser(hydrateUserId)
+    ]);
+    optionalHydrations.forEach((result) => {
+      if (result.status === 'rejected') {
+        console.error(`Optional Firestore account/history hydration failed for user ${hydrateUserId}:`, result.reason);
+      }
+    });
+  }
   return localUser;
 }
 
@@ -574,10 +581,17 @@ async function hydrateUserFromFirestoreById(userId) {
 
   const localUser = upsertLocalUser(doc.data(), doc.id);
   const hydrateUserId = localUser ? localUser.id : normalizedUserId;
-  await Promise.all([
-    hydrateAccountsForUser(hydrateUserId),
-    hydrateTransactionsForUser(hydrateUserId)
-  ]);
+  if (localUser) {
+    const optionalHydrations = await Promise.allSettled([
+      hydrateAccountsForUser(hydrateUserId),
+      hydrateTransactionsForUser(hydrateUserId)
+    ]);
+    optionalHydrations.forEach((result) => {
+      if (result.status === 'rejected') {
+        console.error(`Optional Firestore account/history hydration failed for user ${hydrateUserId}:`, result.reason);
+      }
+    });
+  }
   return localUser;
 }
 
@@ -615,8 +629,8 @@ async function hydrateTransactionsForUser(userId, limit = 500) {
   }
 
   const snapshots = await Promise.all([
-    firestore.collection(TRANSACTIONS_COLLECTION).where('user_id', '==', normalizedUserId).orderBy('created_at_ts', 'desc').limit(limit).get(),
-    firestore.collection(TRANSACTIONS_COLLECTION).where('user_ref', '==', String(normalizedUserId)).orderBy('created_at_ts', 'desc').limit(limit).get()
+    firestore.collection(TRANSACTIONS_COLLECTION).where('user_id', '==', normalizedUserId).limit(limit).get(),
+    firestore.collection(TRANSACTIONS_COLLECTION).where('user_ref', '==', String(normalizedUserId)).limit(limit).get()
   ]);
 
   const seen = new Set();
@@ -630,7 +644,10 @@ async function hydrateTransactionsForUser(userId, limit = 500) {
     });
   }
 
-  return txns.filter(Boolean);
+  return txns
+    .filter(Boolean)
+    .sort((left, right) => new Date(right.created_at || 0) - new Date(left.created_at || 0))
+    .slice(0, limit);
 }
 
 async function hydrateRecentCustomersFromFirestore(limit = 200, options = {}) {
