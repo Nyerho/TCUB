@@ -166,6 +166,10 @@ db.exec(`
     status TEXT DEFAULT 'pending',
     reviewed_by INTEGER,
     reviewed_at DATETIME,
+    review_source TEXT DEFAULT 'user_upload',
+    review_notes TEXT,
+    internal_review_notes TEXT,
+    firestore_doc_id TEXT,
     rejection_reason TEXT,
     submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -254,6 +258,10 @@ ensureColumn('users', 'transfer_pin_hash', 'TEXT');
 ensureColumn('users', 'transfer_pin_updated_at', 'DATETIME');
 ensureColumn('users', 'role', "TEXT DEFAULT 'customer'");
 ensureColumn('users', 'last_login', 'DATETIME');
+ensureColumn('kyc', 'review_source', "TEXT DEFAULT 'user_upload'");
+ensureColumn('kyc', 'review_notes', 'TEXT');
+ensureColumn('kyc', 'internal_review_notes', 'TEXT');
+ensureColumn('kyc', 'firestore_doc_id', 'TEXT');
 
 // Repair legacy rows where customer records inherited an admin role default.
 db.prepare(`

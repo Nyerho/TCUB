@@ -21,6 +21,8 @@ const {
   syncUserBundleToFirestore,
   syncAccountToFirestore,
   syncTransactionToFirestore,
+  syncUserKycReviewToFirestore,
+  hydrateKycForUserFromFirestore,
   hydratePendingKycFromFirestore
 } = require('../services/firestore-sync');
 
@@ -75,22 +77,15 @@ async function hydrateAdminCustomerDirectory() {
 }
 
 async function findAdminCustomerById(userId) {
-  let user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (user) {
-    return user;
+  let user = null;
+  if (isFirestoreEnabled()) {
+    try {
+      user = await hydrateUserFromFirestoreById(userId);
+    } catch (error) {
+      console.error('Failed to hydrate admin user from Firestore:', error);
+    }
   }
-
-  if (!isFirestoreEnabled()) {
-    return null;
-  }
-
-  try {
-    user = await hydrateUserFromFirestoreById(userId);
-  } catch (error) {
-    console.error('Failed to hydrate admin user from Firestore:', error);
-  }
-
-  return user || null;
+  return user || db.prepare('SELECT * FROM users WHERE id = ?').get(userId) || null;
 }
 
 async function hydrateAdminTransactionDirectory(limit = 500) {
@@ -529,6 +524,13 @@ router.get('/users/:id', requireAdmin, async (req, res) => {
   `).all(user.id);
   const cards = db.prepare('SELECT * FROM cards WHERE user_id = ?').all(user.id);
   const loans = db.prepare('SELECT * FROM loans WHERE user_id = ?').all(user.id);
+  if (isFirestoreEnabled()) {
+    try {
+      await hydrateKycForUserFromFirestore(user.id);
+    } catch (error) {
+      console.error(`Failed to hydrate KYC records for user ${user.id}:`, error.message);
+    }
+  }
   const kycRecords = db.prepare('SELECT * FROM kyc WHERE user_id = ? ORDER BY id DESC').all(user.id);
   const notifications = db.prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20').all(user.id);
   const logs = db.prepare(`
@@ -902,6 +904,87 @@ router.get('/approvals', requireAdmin, async (req, res) => {
   });
 });
 
+router.post('/users/:id/kyc/manual-approve', requireAdmin, async (req, res) => {
+  const userId = Number.parseInt(req.params.id, 10);
+  const user = Number.isInteger(userId) ? await findAdminCustomerById(userId) : null;
+  if (!user) {
+    req.session.error = 'User not found.';
+    return res.redirect('/admin/users');
+  }
+  if (!isFirestoreEnabled()) {
+    req.session.error = 'KYC approval cannot be saved right now because Firestore is unavailable.';
+    return res.redirect(`/admin/users/${userId}`);
+  }
+
+  const internalReviewNotes = String(req.body.review_notes || '').trim().slice(0, 500) ||
+    'Identity details were received through customer support and manually reviewed by an administrator.';
+  const customerReviewNote = 'Identity verification was approved after a support-assisted review.';
+  const pendingKyc = db.prepare('SELECT * FROM kyc WHERE user_id = ? AND status = ? ORDER BY id DESC LIMIT 1')
+    .get(userId, 'pending');
+  const priorVerified = Number(user.is_verified) === 1 ? 1 : 0;
+  const tx = db.transaction(() => {
+    if (pendingKyc) {
+      db.prepare(`
+        UPDATE kyc
+        SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP,
+            review_source = 'support_assisted', review_notes = ?, internal_review_notes = ?, rejection_reason = ''
+        WHERE id = ?
+      `).run(req.session.userId, customerReviewNote, internalReviewNotes, pendingKyc.id);
+    } else {
+      db.prepare(`
+        INSERT INTO kyc (
+          user_id, document_type, document_number, status, reviewed_by, reviewed_at,
+          review_source, review_notes, internal_review_notes
+        )
+        VALUES (?, 'Support-assisted verification', '', 'approved', ?, CURRENT_TIMESTAMP, 'support_assisted', ?, ?)
+      `).run(userId, req.session.userId, customerReviewNote, internalReviewNotes);
+    }
+    db.prepare('UPDATE users SET is_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(userId);
+  });
+
+  tx();
+  const approvedKyc = pendingKyc
+    ? db.prepare('SELECT * FROM kyc WHERE id = ?').get(pendingKyc.id)
+    : db.prepare('SELECT * FROM kyc WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(userId);
+
+  try {
+    const synced = await syncUserKycReviewToFirestore(userId, approvedKyc);
+    if (!synced) throw new Error('Firestore KYC review sync returned false.');
+  } catch (error) {
+    console.error(`Failed to persist support-assisted KYC approval for user ${userId}:`, error);
+    const rollback = db.transaction(() => {
+      db.prepare('UPDATE users SET is_verified = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(priorVerified, userId);
+      if (pendingKyc) {
+        db.prepare(`
+          UPDATE kyc SET status = ?, reviewed_by = ?, reviewed_at = ?, review_source = ?,
+            review_notes = ?, internal_review_notes = ?, rejection_reason = ? WHERE id = ?
+        `).run(
+          pendingKyc.status,
+          pendingKyc.reviewed_by,
+          pendingKyc.reviewed_at,
+          pendingKyc.review_source || 'user_upload',
+          pendingKyc.review_notes || '',
+          pendingKyc.internal_review_notes || '',
+          pendingKyc.rejection_reason || '',
+          pendingKyc.id
+        );
+      } else {
+        db.prepare('DELETE FROM kyc WHERE id = ?').run(approvedKyc.id);
+      }
+    });
+    rollback();
+    req.session.error = 'KYC approval was not saved. Firestore could not be updated; please retry.';
+    return res.redirect(`/admin/users/${userId}`);
+  }
+
+  addAuditLog(req.session.userId, 'APPROVE_KYC_SUPPORT', 'kyc', approvedKyc.id,
+    `Support-assisted KYC approval for user ${userId}; no in-app document upload. ${internalReviewNotes}`, req.ip);
+  addNotification(userId, 'KYC Approved',
+    'Your identity verification was approved after review with our customer support team.', 'success');
+  req.session.success = 'KYC approved and saved to Firestore.';
+  return res.redirect(`/admin/users/${userId}#tab-kyc`);
+});
+
 router.post('/kyc/:id/approve', requireAdmin, async (req, res) => {
   const kycId = req.params.id;
   const kyc = db.prepare('SELECT * FROM kyc WHERE id = ? AND status = ?').get(kycId, 'pending');
@@ -915,7 +998,8 @@ router.post('/kyc/:id/approve', requireAdmin, async (req, res) => {
   });
   tx();
 
-  await syncUserBundle(kyc.user_id);
+  const reviewedKyc = db.prepare('SELECT * FROM kyc WHERE id = ?').get(kycId);
+  await syncUserKycReviewToFirestore(kyc.user_id, reviewedKyc);
 
   addAuditLog(req.session.userId, 'APPROVE_KYC', 'kyc', kycId, `Approved KYC #${kycId} for user ${kyc.user_id}`, req.ip);
   addNotification(kyc.user_id, 'KYC Approved', 'Your identity verification has been approved! You now have full access to all features.', 'success');
@@ -942,7 +1026,8 @@ router.post('/kyc/:id/reject', requireAdmin, async (req, res) => {
   });
   tx();
 
-  await syncUserBundle(kyc.user_id);
+  const reviewedKyc = db.prepare('SELECT * FROM kyc WHERE id = ?').get(kycId);
+  await syncUserKycReviewToFirestore(kyc.user_id, reviewedKyc);
 
   addAuditLog(req.session.userId, 'REJECT_KYC', 'kyc', kycId, `Rejected KYC #${kycId}: ${reason}`, req.ip);
   addNotification(kyc.user_id, 'KYC Rejected', `Your KYC was rejected: ${reason || 'Please resubmit valid documents.'}`, 'warning');

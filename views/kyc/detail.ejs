@@ -9,12 +9,12 @@
       <span class="status-badge status-<%= record.status %>"><%= record.status.toUpperCase() %></span>
     </div>
     <div class="card-body">
-      <% if (record.status === 'verified') { %>
+      <% if (record.status === 'verified' || record.status === 'approved') { %>
         <div class="alert alert-success" style="margin-bottom:20px;">
           <span class="alert-icon">✅</span>
           <div class="alert-content">
             <div class="alert-title">Identity Verified!</div>
-            <p class="alert-message" style="margin:0;">All banking features have been unlocked on your account.</p>
+            <p class="alert-message" style="margin:0;"><%= record.review_source === 'support_assisted' ? 'Your identity was approved after review with customer support. Your account is verified.' : 'All banking features have been unlocked on your account.' %></p>
           </div>
         </div>
       <% } else if (record.status === 'rejected') { %>
@@ -39,13 +39,13 @@
         <div class="timeline-item">
           <div class="timeline-time"><%= moment(record.created_at).format('DD MMM, HH:mm') %></div>
           <div class="timeline-title">📝 Submitted</div>
-          <div class="timeline-desc">Submitted <%= record.document_type %> verification.</div>
+          <div class="timeline-desc"><%= record.review_source === 'support_assisted' ? 'Support-assisted identity verification. No files were uploaded through the KYC form.' : 'Submitted ' + record.document_type + ' verification.' %></div>
         </div>
         <% if (record.reviewed_at) { %>
           <div class="timeline-item">
             <div class="timeline-time"><%= moment(record.reviewed_at).format('DD MMM, HH:mm') %></div>
             <div class="timeline-title">
-              <%= record.status === 'verified' ? '✅ Verified' : '❌ Rejected' %>
+              <%= ['verified', 'approved'].includes(record.status) ? '✅ Verified' : '❌ Rejected' %>
             </div>
             <div class="timeline-desc">
               Reviewed by admin. <%= record.review_notes ? 'Notes: ' + record.review_notes : '' %>
@@ -65,11 +65,11 @@
         <div style="display:grid;gap:10px;">
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
             <span style="color:var(--text-gray);">Type</span>
-            <strong><%= record.document_type %></strong>
+            <strong><%= record.document_type || 'Support-assisted verification' %></strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
             <span style="color:var(--text-gray);">Number</span>
-            <strong style="font-family:monospace;"><%= record.document_number %></strong>
+            <strong style="font-family:monospace;"><%= record.document_number || 'Not collected in this form' %></strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
             <span style="color:var(--text-gray);">Name on document</span>
@@ -98,6 +98,9 @@
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header"><h3 class="card-title">🖼️ Document Preview</h3></div>
       <div class="card-body">
+        <% if (record.review_source === 'support_assisted' && !record.document_front) { %>
+          <div class="empty-state" style="padding:28px;">This verification was approved after an administrator reviewed information supplied through customer support; no documents were uploaded through this form.</div>
+        <% } else { %>
         <div style="display:grid;gap:14px;">
           <div style="aspect-ratio:1.586;background:var(--bg-gray);border:2px dashed var(--border);border-radius:var(--radius-lg);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-light);">
             <div style="font-size:2.5rem;margin-bottom:8px;">📄</div>
@@ -110,6 +113,7 @@
             <div style="font-size:0.8rem;">Uploaded document</div>
           </div>
         </div>
+        <% } %>
       </div>
     </div>
 
@@ -126,4 +130,3 @@
 </div>
 
 <%- include('../partials/layouts/user-end') -%>
-

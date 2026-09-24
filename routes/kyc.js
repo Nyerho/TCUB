@@ -8,7 +8,11 @@ const {
   requireAuth,
   addNotification
 } = require('../middleware/auth');
-const { isFirestoreEnabled, syncKycSubmissionToFirestore } = require('../services/firestore-sync');
+const {
+  isFirestoreEnabled,
+  syncKycSubmissionToFirestore,
+  hydrateKycForUserFromFirestore
+} = require('../services/firestore-sync');
 
 const router = express.Router();
 
@@ -50,7 +54,14 @@ const upload = multer({
   }
 });
 
-router.get('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
+  if (isFirestoreEnabled()) {
+    try {
+      await hydrateKycForUserFromFirestore(req.session.userId);
+    } catch (error) {
+      console.error(`Failed to hydrate KYC history for user ${req.session.userId}:`, error.message);
+    }
+  }
   const kycRecords = db.prepare(`
     SELECT * FROM kyc
     WHERE user_id = ?
@@ -152,7 +163,14 @@ router.post('/submit', requireAuth, upload.fields([
   res.redirect('/kyc');
 });
 
-router.get('/:id', requireAuth, (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
+  if (isFirestoreEnabled()) {
+    try {
+      await hydrateKycForUserFromFirestore(req.session.userId);
+    } catch (error) {
+      console.error(`Failed to hydrate KYC record for user ${req.session.userId}:`, error.message);
+    }
+  }
   const kyc = db.prepare(`
     SELECT k.*, u.first_name, u.last_name, u.email
     FROM kyc k
