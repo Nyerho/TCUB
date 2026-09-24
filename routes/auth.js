@@ -33,11 +33,14 @@ async function verifyFirebasePassword(email, password) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email, password, returnSecureToken: true })
     });
-    if (!response.ok) return null;
-    return await response.json();
+    const result = await response.json();
+    if (!response.ok) {
+      return { verified: false, unavailable: false, error: result.error && result.error.message };
+    }
+    return { verified: true, unavailable: false, user: result };
   } catch (error) {
     console.error('Firebase Auth password verification failed:', error);
-    return null;
+    return { verified: false, unavailable: true };
   }
 }
 
@@ -313,23 +316,26 @@ router.post('/login', async (req, res) => {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  let user = db.prepare('SELECT * FROM users WHERE email = ?').get(normalizedEmail);
-
-  if (!user && isFirestoreEnabled()) {
-    try {
-      user = await hydrateUserFromFirestoreByEmail(normalizedEmail);
-    } catch (error) {
-      console.error('Failed to hydrate user from Firestore during login:', error);
-    }
+  if (!isFirestoreEnabled()) {
+    req.session.error = 'Account data is temporarily unavailable. Please try again shortly.';
+    return res.redirect('/auth/login');
   }
 
-  let firebaseUser = null;
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    firebaseUser = await verifyFirebasePassword(normalizedEmail, password);
-    if (firebaseUser && !user) {
-      user = hydrateConfiguredFirebaseAdmin(firebaseUser, password);
-    } else if (firebaseUser && user && normalizedEmail === (process.env.ADMIN_EMAIL || 'admin@tcub.xyz').trim().toLowerCase()) {
-      user = hydrateConfiguredFirebaseAdmin(firebaseUser, password);
+  let user;
+  try {
+    // Firestore is authoritative: a warm server's SQLite file may be an old
+    // snapshot or may belong to another serverless instance.
+    user = await hydrateUserFromFirestoreByEmail(normalizedEmail);
+  } catch (error) {
+    console.error('Failed to hydrate user from Firestore during login:', error);
+    req.session.error = 'Account data is temporarily unavailable. Please try again shortly.';
+    return res.redirect('/auth/login');
+  }
+
+  const authResult = await verifyFirebasePassword(normalizedEmail, password);
+  if (!user && normalizedEmail === (process.env.ADMIN_EMAIL || 'admin@tcub.xyz').trim().toLowerCase()) {
+    if (authResult.verified) {
+      user = hydrateConfiguredFirebaseAdmin(authResult.user, password);
     }
   }
 
@@ -338,9 +344,23 @@ router.post('/login', async (req, res) => {
     return res.redirect('/auth/login');
   }
 
-  const isValid = firebaseUser ? true : await bcrypt.compare(password, user.password);
-  if (!isValid) {
-    req.session.error = 'Invalid email or password.';
+  // Firebase Auth is the primary credential check. A Firestore password hash
+  // is retained only as a migration/recovery path for accounts whose Auth user
+  // was never provisioned (or whose credentials were not synced at signup).
+  let credentialValid = authResult.verified;
+  const mayUseLegacyHash = authResult.unavailable || authResult.error === 'EMAIL_NOT_FOUND';
+  if (!credentialValid && user.password && mayUseLegacyHash) {
+    credentialValid = await bcrypt.compare(password, user.password);
+    if (credentialValid) {
+      syncLocalUserToFirebaseAuth(user, password).catch((error) => {
+        console.error(`Failed to repair Firebase Authentication user for ${normalizedEmail}:`, error);
+      });
+    }
+  }
+  if (!credentialValid) {
+    req.session.error = authResult.unavailable
+      ? 'Secure sign-in is temporarily unavailable. Please try again shortly.'
+      : 'Invalid email or password.';
     return res.redirect('/auth/login');
   }
 
@@ -356,10 +376,6 @@ router.post('/login', async (req, res) => {
       console.error('Failed to sync login update to Firestore:', error);
     });
   }
-
-  syncLocalUserToFirebaseAuth(user, password).catch((error) => {
-    console.error(`Failed to sync Firebase Authentication user for ${normalizedEmail}:`, error);
-  });
 
   sendLoginWelcomeEmail(user, {
     ip: req.ip,

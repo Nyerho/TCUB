@@ -68,7 +68,7 @@ async function hydrateAdminCustomerDirectory() {
   }
 
   try {
-    await hydrateRecentCustomersFromFirestore(200);
+    await hydrateRecentCustomersFromFirestore(Number.MAX_SAFE_INTEGER, { includeTransactions: false });
   } catch (error) {
     console.error('Failed to hydrate admin customer directory from Firestore:', error);
   }
@@ -394,11 +394,11 @@ async function getStats() {
 
     return {
       ...baseStats,
-      totalUsers: Math.max(baseStats.totalUsers, firestoreStats.totalCustomers),
-      totalCustomers: Math.max(baseStats.totalCustomers, firestoreStats.totalCustomers),
-      newThisWeek: Math.max(baseStats.newThisWeek, firestoreStats.newThisWeek),
-      unverifiedCustomers: Math.max(baseStats.unverifiedCustomers, firestoreStats.unverifiedCustomers),
-      recentUsers: firestoreStats.recentUsers.length > baseStats.recentUsers.length ? firestoreStats.recentUsers : baseStats.recentUsers
+      totalUsers: firestoreStats.totalCustomers,
+      totalCustomers: firestoreStats.totalCustomers,
+      newThisWeek: firestoreStats.newThisWeek,
+      unverifiedCustomers: firestoreStats.unverifiedCustomers,
+      recentUsers: firestoreStats.recentUsers
     };
   } catch (error) {
     console.error('Failed to load customer stats from Firestore:', error);
@@ -439,7 +439,7 @@ router.get('/users', requireAdmin, async (req, res) => {
   if (verified === 'verified') query += ' AND COALESCE(u.is_verified, 0) = 1';
   if (verified === 'unverified') query += ' AND COALESCE(u.is_verified, 0) = 0';
 
-  query += ' ORDER BY u.created_at DESC LIMIT 200';
+  query += ' ORDER BY u.created_at DESC';
   const users = db.prepare(query).all(...params);
 
   users.forEach(u => {
