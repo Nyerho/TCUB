@@ -183,14 +183,38 @@
 </div>
 
 <div class="tab-content" id="tab-kyc" style="display:none;">
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><h3 class="card-title">🆔 KYC Status</h3></div>
+    <div class="card-body">
+      <% if (Number(customer.is_verified) === 1) { %>
+        <div class="alert alert-success" style="margin:0;">
+          <span class="alert-icon">✅</span><div class="alert-content">
+            <div class="alert-title">Identity verified</div>
+            <p class="alert-message" style="margin:0;">This customer is KYC-verified. The status is synced with Firebase/Firestore.</p>
+          </div>
+        </div>
+      <% } else { %>
+        <p style="margin:0 0 12px;color:var(--text-gray);">If the customer supplied and you reviewed identity details through support, approve here without requiring an in-app file upload. Record a brief note for the audit trail.</p>
+        <form method="POST" action="/admin/users/<%= customer.id %>/kyc/manual-approve" onsubmit="return confirm('Mark this customer KYC-verified based on your support-assisted review? This will unlock verified features.');" style="display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" for="supportKycNotes">Internal admin review note (optional; not shown to customer)</label>
+            <input id="supportKycNotes" name="review_notes" class="form-input" maxlength="500" placeholder="e.g. Identity checked with customer via support on 24 Sep">
+          </div>
+          <button class="btn btn-success" type="submit">✅ Approve KYC without upload</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
   <div class="card"><div class="card-header"><h3 class="card-title">🆔 KYC Records</h3></div>
     <div class="table-wrap"><table class="table"><thead><tr><th>Type</th><th>Number</th><th>Expiry</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody><% (kyc||[]).forEach(k => { %>
-      <tr><td><strong><%= k.document_type %></strong></td>
-      <td style="font-family:monospace;"><%= k.document_number %></td>
-      <td><%= moment(k.expiry_date).format('DD MMM YYYY') %></td>
-      <td><%= moment(k.created_at).format('DD MMM YYYY') %></td>
-      <td><span class="status-badge status-<%= k.status %>"><%= k.status %></span></td>
+      <tr><td><strong><%= k.document_type || (k.review_source === 'support_assisted' ? 'Support-assisted verification' : 'Identity verification') %></strong>
+        <% if (k.review_source === 'support_assisted') { %><div style="font-size:0.72rem;color:var(--text-light);">Reviewed through support; no upload</div><% } %></td>
+      <td style="font-family:monospace;"><%= k.document_number || '—' %></td>
+      <td><%= k.id_expiry ? moment(k.id_expiry).format('DD MMM YYYY') : '—' %></td>
+      <td><%= k.submitted_at ? moment(k.submitted_at).format('DD MMM YYYY') : '—' %></td>
+      <td><span class="status-badge status-<%= k.status %>"><%= k.status %></span>
+        <% if (k.internal_review_notes || k.review_notes) { %><div style="font-size:0.72rem;color:var(--text-light);max-width:260px;"><%= k.internal_review_notes || k.review_notes %></div><% } %></td>
       <td>
         <% if (k.status === 'pending') { %>
           <form method="POST" action="/admin/approvals/kyc/<%= k.id %>" style="display:inline;" onsubmit="return confirm('Approve KYC?');">
@@ -388,8 +412,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
   });
 });
+if (window.location.hash === '#tab-kyc') {
+  document.querySelector('.tab-btn[data-tab="kyc"]')?.click();
+}
 </script>
 
 <%- include('../partials/layouts/admin-end') -%>
-
-

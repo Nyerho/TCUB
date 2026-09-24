@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { db } = require('../database');
 const { getFirestore, hasAdminCredentials, logFirestoreDiagnostics, getResolvedProjectId } = require('../lib/firebase-admin');
 
@@ -779,13 +780,12 @@ async function backfillLocalUsersToFirestore(limit = 500) {
 }
 
 
-async function syncKycSubmissionToFirestore(kycRecord) {
-  const firestore = getFirestore();
-  if (!firestore || !kycRecord) return false;
-  const docId = String(kycRecord.id);
-  await firestore.collection('kyc').doc(docId).set({
+function toFirestoreKyc(kycRecord) {
+  return {
     local_id: Number(kycRecord.id),
+    firestore_doc_id: kycRecord.firestore_doc_id || '',
     user_id: Number(kycRecord.user_id),
+    user_ref: String(kycRecord.user_id),
     document_type: kycRecord.document_type || '',
     document_number: kycRecord.document_number || '',
     document_front: kycRecord.document_front || '',
@@ -793,10 +793,137 @@ async function syncKycSubmissionToFirestore(kycRecord) {
     document_selfie: kycRecord.document_selfie || '',
     id_expiry: kycRecord.id_expiry || null,
     status: kycRecord.status || 'pending',
+    review_source: kycRecord.review_source || 'user_upload',
+    review_notes: kycRecord.review_notes || '',
+    internal_review_notes: kycRecord.internal_review_notes || '',
+    rejection_reason: kycRecord.rejection_reason || '',
+    reviewed_by: kycRecord.reviewed_by ? Number(kycRecord.reviewed_by) : null,
+    reviewed_at: kycRecord.reviewed_at || null,
     submitted_at: kycRecord.submitted_at || new Date().toISOString(),
     updated_at: new Date().toISOString()
-  }, { merge: true });
+  };
+}
+
+async function resolveKycFirestoreDocId(firestore, kycRecord, userId) {
+  if (kycRecord.firestore_doc_id) return String(kycRecord.firestore_doc_id);
+  const legacyId = String(kycRecord.id);
+  const legacyDoc = await firestore.collection('kyc').doc(legacyId).get();
+  if (legacyDoc.exists && asInt(legacyDoc.data().user_id || legacyDoc.data().user_ref) === asInt(userId)) {
+    return legacyId;
+  }
+  return `kyc_${userId}_${kycRecord.id}_${crypto.randomUUID()}`;
+}
+
+async function syncKycSubmissionToFirestore(kycRecord) {
+  const firestore = getFirestore();
+  if (!firestore || !kycRecord) return false;
+  const docId = await resolveKycFirestoreDocId(firestore, kycRecord, kycRecord.user_id);
+  db.prepare('UPDATE kyc SET firestore_doc_id = ? WHERE id = ?').run(docId, kycRecord.id);
+  const record = { ...kycRecord, firestore_doc_id: docId };
+  await firestore.collection('kyc').doc(docId).set(toFirestoreKyc(record), { merge: true });
   return true;
+}
+
+async function syncUserKycReviewToFirestore(userId, kycRecord) {
+  const firestore = getFirestore();
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!firestore || !user || !kycRecord) return false;
+
+  const docId = await resolveKycFirestoreDocId(firestore, kycRecord, user.id);
+  db.prepare('UPDATE kyc SET firestore_doc_id = ? WHERE id = ?').run(docId, kycRecord.id);
+  const record = { ...kycRecord, firestore_doc_id: docId };
+  const batch = firestore.batch();
+  batch.set(firestore.collection(USERS_COLLECTION).doc(String(user.id)), toFirestoreUser(user), { merge: true });
+  batch.set(firestore.collection('kyc').doc(docId), toFirestoreKyc(record), { merge: true });
+  await batch.commit();
+  return true;
+}
+
+async function hydrateKycForUserFromFirestore(userId) {
+  const firestore = getFirestore();
+  const normalizedUserId = asInt(userId);
+  if (!firestore || !normalizedUserId) return 0;
+
+  const snapshots = await Promise.all([
+    firestore.collection('kyc').where('user_id', '==', normalizedUserId).get(),
+    firestore.collection('kyc').where('user_id', '==', String(normalizedUserId)).get(),
+    firestore.collection('kyc').where('user_ref', '==', String(normalizedUserId)).get()
+  ]);
+  const seen = new Set();
+  let hydrated = 0;
+
+  for (const snapshot of snapshots) {
+    for (const doc of snapshot.docs) {
+      if (seen.has(doc.id)) continue;
+      seen.add(doc.id);
+      const data = doc.data();
+      let recordId = asInt(data.local_id || doc.id);
+      const recordUserId = asInt(data.user_id || data.user_ref);
+      if (!recordId || recordUserId !== normalizedUserId) continue;
+      const existingDoc = db.prepare('SELECT id FROM kyc WHERE firestore_doc_id = ?').get(doc.id);
+      if (existingDoc) {
+        recordId = Number(existingDoc.id);
+      } else {
+        const idCollision = db.prepare('SELECT id, user_id, firestore_doc_id FROM kyc WHERE id = ?').get(recordId);
+        const sameLegacyRecord = idCollision && Number(idCollision.user_id) === normalizedUserId &&
+          doc.id === String(idCollision.id);
+        if (idCollision && !sameLegacyRecord && idCollision.firestore_doc_id !== doc.id) {
+          recordId = Number(db.prepare('SELECT COALESCE(MAX(id), 0) + 1 AS id FROM kyc').get().id);
+        }
+      }
+
+      db.prepare(`
+        INSERT INTO kyc (
+          id, user_id, document_type, document_number, document_front, document_back,
+          document_selfie, id_expiry, status, reviewed_by, reviewed_at, rejection_reason,
+          submitted_at, review_source, review_notes, internal_review_notes, firestore_doc_id
+        )
+        VALUES (
+          @id, @user_id, @document_type, @document_number, @document_front, @document_back,
+          @document_selfie, @id_expiry, @status, @reviewed_by, @reviewed_at, @rejection_reason,
+          @submitted_at, @review_source, @review_notes, @internal_review_notes, @firestore_doc_id
+        )
+        ON CONFLICT(id) DO UPDATE SET
+          user_id = excluded.user_id,
+          document_type = excluded.document_type,
+          document_number = excluded.document_number,
+          document_front = excluded.document_front,
+          document_back = excluded.document_back,
+          document_selfie = excluded.document_selfie,
+          id_expiry = excluded.id_expiry,
+          status = excluded.status,
+          reviewed_by = excluded.reviewed_by,
+          reviewed_at = excluded.reviewed_at,
+          rejection_reason = excluded.rejection_reason,
+          submitted_at = excluded.submitted_at,
+          review_source = excluded.review_source,
+          review_notes = excluded.review_notes,
+          internal_review_notes = excluded.internal_review_notes,
+          firestore_doc_id = excluded.firestore_doc_id
+      `).run({
+        id: recordId,
+        user_id: normalizedUserId,
+        document_type: data.document_type || 'Support-assisted verification',
+        document_number: data.document_number || '',
+        document_front: data.document_front || '',
+        document_back: data.document_back || '',
+        document_selfie: data.document_selfie || '',
+        id_expiry: data.id_expiry || null,
+        status: data.status || 'pending',
+        reviewed_by: data.reviewed_by ? asInt(data.reviewed_by) : null,
+        reviewed_at: toSqlDateTime(data.reviewed_at),
+        rejection_reason: data.rejection_reason || '',
+        submitted_at: toSqlDateTime(data.submitted_at) || toSqlDateTime(new Date()),
+        review_source: data.review_source || 'user_upload',
+        review_notes: data.review_notes || '',
+        internal_review_notes: data.internal_review_notes || '',
+        firestore_doc_id: doc.id
+      });
+      hydrated++;
+    }
+  }
+
+  return hydrated;
 }
 
 
@@ -805,29 +932,15 @@ async function hydratePendingKycFromFirestore() {
   if (!firestore) return 0;
   const snapshot = await firestore.collection('kyc').where('status', '==', 'pending').get();
   let restored = 0;
+  const hydratedUsers = new Set();
   for (const doc of snapshot.docs) {
     const item = doc.data();
-    const localId = Number(item.local_id || doc.id);
-    if (!Number.isFinite(localId)) continue;
-    const exists = db.prepare('SELECT id FROM kyc WHERE id = ?').get(localId);
-    if (exists) continue;
-    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(Number(item.user_id));
+    const userId = asInt(item.user_id || item.user_ref);
+    if (!userId || hydratedUsers.has(userId)) continue;
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
     if (!user) continue;
-    db.prepare(`
-      INSERT INTO kyc (id, user_id, document_type, document_number, document_front, document_back, document_selfie, id_expiry, status, submitted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-    `).run(
-      localId,
-      Number(item.user_id),
-      item.document_type || '',
-      item.document_number || '',
-      item.document_front || '',
-      item.document_back || '',
-      item.document_selfie || '',
-      item.id_expiry || null,
-      item.submitted_at || new Date().toISOString()
-    );
-    restored++;
+    hydratedUsers.add(userId);
+    restored += await hydrateKycForUserFromFirestore(userId);
   }
   return restored;
 }
@@ -849,5 +962,7 @@ module.exports = {
   getFirestoreDashboardCustomerStats,
   backfillLocalUsersToFirestore,
   syncKycSubmissionToFirestore,
+  syncUserKycReviewToFirestore,
+  hydrateKycForUserFromFirestore,
   hydratePendingKycFromFirestore
 };

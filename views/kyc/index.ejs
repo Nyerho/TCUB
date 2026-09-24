@@ -15,14 +15,14 @@
       <span class="status-badge status-<%= latest.status %>"><%= latest.status.toUpperCase() %></span>
     </div>
     <div class="card-body">
-      <div class="alert alert-<%= latest.status === 'verified' ? 'success' : latest.status === 'rejected' ? 'danger' : 'warning' %>" style="margin-bottom:20px;">
-        <span class="alert-icon"><%= latest.status === 'verified' ? '✅' : latest.status === 'rejected' ? '❌' : '⏳' %></span>
+      <div class="alert alert-<%= ['verified', 'approved'].includes(latest.status) ? 'success' : latest.status === 'rejected' ? 'danger' : 'warning' %>" style="margin-bottom:20px;">
+        <span class="alert-icon"><%= ['verified', 'approved'].includes(latest.status) ? '✅' : latest.status === 'rejected' ? '❌' : '⏳' %></span>
         <div class="alert-content">
           <div class="alert-title">
-            <%= latest.status === 'verified' ? 'Identity Verified!' : latest.status === 'rejected' ? 'Verification Rejected' : 'Under Review' %>
+            <%= ['verified', 'approved'].includes(latest.status) ? 'Identity Verified!' : latest.status === 'rejected' ? 'Verification Rejected' : 'Under Review' %>
           </div>
           <p class="alert-message" style="margin:0;">
-            <%= latest.status === 'verified' ? 'Your account is fully verified. You have access to all banking features, higher limits, cards & loans.' :
+            <%= ['verified', 'approved'].includes(latest.status) ? (latest.review_source === 'support_assisted' ? 'Your identity was approved after review with customer support. Your account is verified.' : 'Your account is fully verified. You have access to all banking features, higher limits, cards & loans.') :
                 latest.status === 'rejected' ? 'Unfortunately your documents could not be verified: ' + (latest.review_notes || 'Please ensure documents are clear, in-colour, and not expired.') :
                 'Our team is reviewing your documents. Typically completed within 4 business hours during weekdays.' %>
           </p>
@@ -92,7 +92,7 @@
               <div style="font-weight:600;font-size:0.9rem;"><%= r.document_type %></div>
             </td>
             <td style="font-family:monospace;font-size:0.85rem;"><%= r.document_number || '—' %></td>
-            <td><span class="status-badge status-<%= r.status %>"><%= r.status %></span></td>
+            <td><span class="status-badge status-<%= ['approved', 'verified'].includes(r.status) ? 'approved' : r.status %>"><%= ['approved', 'verified'].includes(r.status) ? 'verified' : r.status %></span></td>
             <td onclick="event.stopPropagation();"><a href="/kyc/<%= r.id %>" class="btn btn-light btn-sm">View</a></td>
           </tr>
         <% }) %>
@@ -102,4 +102,3 @@
 </div>
 
 <%- include('../partials/layouts/user-end') -%>
-

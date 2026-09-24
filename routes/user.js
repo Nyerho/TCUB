@@ -9,6 +9,7 @@ const {
   getRecentTransactions,
   getNotifications
 } = require('../middleware/auth');
+const { isFirestoreEnabled, hydrateKycForUserFromFirestore } = require('../services/firestore-sync');
 
 const router = express.Router();
 
@@ -54,8 +55,15 @@ function getDebitTotal(transactions) {
   }, 0);
 }
 
-router.get('/dashboard', requireAuth, (req, res) => {
+router.get('/dashboard', requireAuth, async (req, res) => {
   const userId = req.session.userId;
+  if (isFirestoreEnabled()) {
+    try {
+      await hydrateKycForUserFromFirestore(userId);
+    } catch (error) {
+      console.error(`Failed to hydrate dashboard KYC status for user ${userId}:`, error.message);
+    }
+  }
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   const accounts = getUserAccounts(userId);
   const transactions = getRecentTransactions(userId, 25);
