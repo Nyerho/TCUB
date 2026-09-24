@@ -60,8 +60,24 @@ function normalizeUserRole(user) {
 }
 
 function asInt(value, fallback = 0) {
+  if (value === true) return 1;
+  if (value === false) return 0;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function isCustomerDocument(data = {}) {
+  const role = String(data.role || '').trim().toLowerCase();
+  const adminFlag = data.is_admin;
+  return adminFlag !== true && !['1', 'true', 'yes'].includes(String(adminFlag || '').trim().toLowerCase()) &&
+    !['admin', 'super_admin', 'owner'].includes(role);
+}
+
+function getDocumentDate(data, primary, fallback) {
+  const value = data[primary] || data[fallback];
+  if (value && typeof value.toDate === 'function') return value.toDate();
+  const parsed = value ? new Date(value) : null;
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date(0);
 }
 
 function asFloat(value, fallback = 0) {
@@ -505,13 +521,19 @@ async function hydrateUserFromFirestoreByEmail(email) {
     return null;
   }
 
-  const snapshot = await firestore.collection(USERS_COLLECTION)
+  let snapshot = await firestore.collection(USERS_COLLECTION)
     .where('email', '==', String(email).trim().toLowerCase())
     .limit(1)
     .get();
 
   if (snapshot.empty) {
-    return null;
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const allUsers = await firestore.collection(USERS_COLLECTION).get();
+    const matchingDoc = allUsers.docs.find((candidate) =>
+      String(candidate.data().email || '').trim().toLowerCase() === normalizedEmail
+    );
+    if (!matchingDoc) return null;
+    snapshot = { empty: false, docs: [matchingDoc] };
   }
 
   const doc = snapshot.docs[0];
@@ -611,27 +633,41 @@ async function hydrateTransactionsForUser(userId, limit = 500) {
   return txns.filter(Boolean);
 }
 
-async function hydrateRecentCustomersFromFirestore(limit = 200) {
+async function hydrateRecentCustomersFromFirestore(limit = 200, options = {}) {
   const firestore = getFirestore();
   if (!firestore) {
     return [];
   }
 
-  const snapshot = await firestore.collection(USERS_COLLECTION)
-    .where('is_admin', '==', 0)
-    .orderBy('created_at_ts', 'desc')
-    .limit(limit)
-    .get();
+  // Do not filter in Firestore: old records may store is_admin as false or
+  // omit it entirely, and Firestore equality queries silently exclude them.
+  const snapshot = await firestore.collection(USERS_COLLECTION).get();
+  const sortedCustomerDocs = snapshot.docs
+    .filter((doc) => isCustomerDocument(doc.data()))
+    .sort((left, right) => getDocumentDate(right.data(), 'created_at_ts', 'created_at') -
+      getDocumentDate(left.data(), 'created_at_ts', 'created_at'))
+    .slice(0, Number.isFinite(limit) ? limit : undefined);
+  const seenEmails = new Set();
+  const customerDocs = sortedCustomerDocs.filter((doc) => {
+    const email = String(doc.data().email || '').trim().toLowerCase();
+    if (!email || seenEmails.has(email)) return false;
+    seenEmails.add(email);
+    return true;
+  });
 
   const users = [];
-  for (const doc of snapshot.docs) {
+  for (const doc of customerDocs) {
     const localUser = upsertLocalUser(doc.data(), doc.id);
     if (localUser) {
       users.push(localUser);
-      await Promise.all([
-        hydrateAccountsForUser(localUser.id),
-        hydrateTransactionsForUser(localUser.id, 100)
-      ]);
+      const hydrations = [];
+      if (options.includeAccounts !== false) {
+        hydrations.push(hydrateAccountsForUser(localUser.id));
+      }
+      if (options.includeTransactions !== false) {
+        hydrations.push(hydrateTransactionsForUser(localUser.id, 100));
+      }
+      await Promise.all(hydrations);
     }
   }
 
@@ -645,17 +681,25 @@ async function getFirestoreDashboardCustomerStats() {
   }
 
   const usersRef = firestore.collection(USERS_COLLECTION);
-  const weekStart = new Date();
-  weekStart.setUTCDate(weekStart.getUTCDate() - 7);
+  const snapshot = await usersRef.get();
+  const sortedCustomers = snapshot.docs
+    .filter((doc) => isCustomerDocument(doc.data()))
+    .sort((left, right) => getDocumentDate(right.data(), 'created_at_ts', 'created_at') -
+      getDocumentDate(left.data(), 'created_at_ts', 'created_at'));
+  const seenEmails = new Set();
+  const customers = sortedCustomers.filter((doc) => {
+    const email = String(doc.data().email || '').trim().toLowerCase();
+    if (!email || seenEmails.has(email)) return false;
+    seenEmails.add(email);
+    return true;
+  });
+  const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const newThisWeek = customers.filter((doc) =>
+    getDocumentDate(doc.data(), 'created_at_ts', 'created_at').getTime() >= weekStart
+  ).length;
+  const unverifiedCustomers = customers.filter((doc) => asInt(doc.data().is_verified) !== 1).length;
 
-  const [totalSnap, newSnap, unverifiedSnap, recentSnap] = await Promise.all([
-    usersRef.where('is_admin', '==', 0).count().get(),
-    usersRef.where('is_admin', '==', 0).where('created_at_ts', '>=', weekStart).count().get(),
-    usersRef.where('is_admin', '==', 0).where('is_verified', '==', 0).count().get(),
-    usersRef.where('is_admin', '==', 0).orderBy('created_at_ts', 'desc').limit(5).get()
-  ]);
-
-  const recentUsers = recentSnap.docs.map((doc) => {
+  const recentUsers = customers.slice(0, 5).map((doc) => {
     const data = doc.data();
     return {
       id: asInt(data.sql_id || doc.id),
@@ -669,9 +713,9 @@ async function getFirestoreDashboardCustomerStats() {
   });
 
   return {
-    totalCustomers: totalSnap.data().count || 0,
-    newThisWeek: newSnap.data().count || 0,
-    unverifiedCustomers: unverifiedSnap.data().count || 0,
+    totalCustomers: customers.length,
+    newThisWeek,
+    unverifiedCustomers,
     recentUsers
   };
 }
