@@ -15,6 +15,7 @@ const {
 const {
   syncUserBundleToFirestore,
   hydrateUserFromFirestoreByEmail,
+  provisionAuthUserToFirestore,
   firestoreUserExistsByEmail,
   isFirestoreEnabled
 } = require('../services/firestore-sync');
@@ -333,6 +334,18 @@ router.post('/login', async (req, res) => {
   }
 
   const authResult = await verifyFirebasePassword(normalizedEmail, password);
+  if (!user && authResult.verified) {
+    try {
+      const { getFirebaseAuth } = require('../lib/firebase-admin');
+      const firebaseAuth = getFirebaseAuth();
+      const authUser = firebaseAuth ? await firebaseAuth.getUser(authResult.user.localId) : null;
+      if (authUser) {
+        user = await provisionAuthUserToFirestore(authUser);
+      }
+    } catch (error) {
+      console.error('Failed to provision Firebase Auth user in Firestore during login:', error);
+    }
+  }
   if (!user && normalizedEmail === (process.env.ADMIN_EMAIL || 'admin@tcub.xyz').trim().toLowerCase()) {
     if (authResult.verified) {
       user = hydrateConfiguredFirebaseAdmin(authResult.user, password);

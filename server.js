@@ -87,8 +87,10 @@ if (isServerless) {
     keys: [sessionSecret],
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
+    // Serverless deployments are HTTPS and may be opened from embedded
+    // previews or different devices, so the session must be cross-site safe.
+    secure: true,
+    sameSite: 'none'
   }));
 } else {
   const sessionConfig = {
