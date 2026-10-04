@@ -554,6 +554,66 @@ async function hydrateUserFromFirestoreByEmail(email) {
   return localUser;
 }
 
+// Firebase Auth does not create a Firestore profile automatically. Provision a
+// profile after a successful Auth login so Auth-only accounts can use the app.
+async function provisionAuthUserToFirestore(authUser) {
+  const firestore = getFirestore();
+  if (!firestore || !authUser || !authUser.uid || !authUser.email) return null;
+
+  const email = String(authUser.email).trim().toLowerCase();
+  const claims = authUser.customClaims || {};
+  const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'admin@tcub.xyz').trim().toLowerCase();
+  const isAdmin = claims.is_admin === true ||
+    ['admin', 'super_admin', 'owner'].includes(String(claims.role || '').toLowerCase()) ||
+    email === configuredAdminEmail;
+  const role = isAdmin ? (String(claims.role || '').toLowerCase() || 'super_admin') : 'customer';
+  const byAuthUid = await firestore.collection(USERS_COLLECTION).where('auth_uid', '==', authUser.uid).limit(1).get();
+  const byEmail = byAuthUid.empty
+    ? await firestore.collection(USERS_COLLECTION).where('email', '==', email).limit(1).get()
+    : byAuthUid;
+  const existing = byEmail.empty ? null : byEmail.docs[0];
+
+  let sqlId = existing ? asInt(existing.data().sql_id || existing.id) : 0;
+  if (!sqlId) {
+    const localUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    sqlId = localUser ? asInt(localUser.id) : 0;
+  }
+  if (!sqlId) {
+    const localMax = db.prepare('SELECT COALESCE(MAX(id), 0) AS max_id FROM users').get().max_id;
+    const snapshot = await firestore.collection(USERS_COLLECTION).get();
+    const remoteMax = snapshot.docs.reduce((max, doc) => Math.max(max, asInt(doc.data().sql_id || doc.id)), 0);
+    sqlId = Math.max(asInt(localMax), remoteMax) + 1;
+  }
+
+  const displayName = String(authUser.displayName || '').trim();
+  const nameParts = displayName ? displayName.split(/\s+/) : [];
+  const firstName = nameParts.shift() || (isAdmin ? 'System' : 'User');
+  const lastName = nameParts.join(' ') || (isAdmin ? 'Administrator' : '');
+  const userData = {
+    sql_id: sqlId, auth_uid: authUser.uid, first_name: firstName, last_name: lastName,
+    email, phone: '', password: '', address: '', city: '', state: '', postcode: '',
+    country: 'United States', profile_image: '', is_admin: isAdmin ? 1 : 0,
+    is_verified: authUser.emailVerified ? 1 : 0, is_frozen: 0, role,
+    created_at: existing && existing.data().created_at ? existing.data().created_at : new Date().toISOString(),
+    updated_at: new Date().toISOString(), provisioned_from_firebase_auth: true
+  };
+
+  await firestore.collection(USERS_COLLECTION).doc(String(sqlId)).set(userData, { merge: true });
+  if (isAdmin) {
+    await firestore.collection(ADMINS_COLLECTION).doc(authUser.uid).set({
+      auth_uid: authUser.uid, user_id: sqlId, user_ref: String(sqlId), email,
+      first_name: firstName, last_name: lastName, phone: '', role, active: true,
+      is_super_admin: role === 'super_admin' || role === 'owner',
+      updated_at: new Date().toISOString(), updated_at_ts: new Date(),
+      provisioned_from_firebase_auth: true
+    }, { merge: true });
+  }
+
+  const localUser = upsertLocalUser(userData, sqlId);
+  console.log(`[firestore-sync] Provisioned Firebase Auth user ${email} (${authUser.uid}) as users/${sqlId}${isAdmin ? ` and admins/${authUser.uid}` : ''}`);
+  return localUser;
+}
+
 async function firestoreUserExistsByEmail(email) {
   const firestore = getFirestore();
   if (!firestore || !email) {
@@ -954,6 +1014,7 @@ module.exports = {
   syncUserBundleToFirestore,
   syncConfiguredAdminToFirestore,
   hydrateUserFromFirestoreByEmail,
+  provisionAuthUserToFirestore,
   hydrateUserFromFirestoreById,
   hydrateAccountsForUser,
   hydrateTransactionsForUser,
