@@ -992,6 +992,7 @@ router.post('/kyc/:id/approve', requireAdmin, async (req, res) => {
     return res.json({ success: false, message: 'KYC not found or already processed' });
   }
 
+  const priorUser = db.prepare('SELECT is_verified FROM users WHERE id = ?').get(kyc.user_id);
   const tx = db.transaction(() => {
     db.prepare('UPDATE kyc SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?').run('approved', req.session.userId, kycId);
     db.prepare('UPDATE users SET is_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(kyc.user_id);
@@ -999,7 +1000,20 @@ router.post('/kyc/:id/approve', requireAdmin, async (req, res) => {
   tx();
 
   const reviewedKyc = db.prepare('SELECT * FROM kyc WHERE id = ?').get(kycId);
-  await syncUserKycReviewToFirestore(kyc.user_id, reviewedKyc);
+  try {
+    const synced = await syncUserKycReviewToFirestore(kyc.user_id, reviewedKyc);
+    if (!synced) throw new Error('Firestore KYC review sync returned false.');
+  } catch (error) {
+    console.error(`Failed to persist KYC approval for record ${kycId}:`, error);
+    db.transaction(() => {
+      db.prepare('UPDATE kyc SET status = ?, reviewed_by = ?, reviewed_at = ?, firestore_doc_id = ? WHERE id = ?')
+        .run(kyc.status, kyc.reviewed_by, kyc.reviewed_at, kyc.firestore_doc_id || null, kycId);
+      db.prepare('UPDATE users SET is_verified = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(Number(priorUser?.is_verified || 0), kyc.user_id);
+    })();
+    req.session.error = 'KYC approval could not be saved because Firestore is temporarily unavailable. Please retry.';
+    return res.redirect('/admin/approvals?section=kyc');
+  }
 
   addAuditLog(req.session.userId, 'APPROVE_KYC', 'kyc', kycId, `Approved KYC #${kycId} for user ${kyc.user_id}`, req.ip);
   addNotification(kyc.user_id, 'KYC Approved', 'Your identity verification has been approved! You now have full access to all features.', 'success');
@@ -1027,7 +1041,19 @@ router.post('/kyc/:id/reject', requireAdmin, async (req, res) => {
   tx();
 
   const reviewedKyc = db.prepare('SELECT * FROM kyc WHERE id = ?').get(kycId);
-  await syncUserKycReviewToFirestore(kyc.user_id, reviewedKyc);
+  try {
+    const synced = await syncUserKycReviewToFirestore(kyc.user_id, reviewedKyc);
+    if (!synced) throw new Error('Firestore KYC review sync returned false.');
+  } catch (error) {
+    console.error(`Failed to persist KYC rejection for record ${kycId}:`, error);
+    db.transaction(() => {
+      db.prepare('UPDATE kyc SET status = ?, rejection_reason = ?, reviewed_by = ?, reviewed_at = ?, firestore_doc_id = ? WHERE id = ?')
+        .run(kyc.status, kyc.rejection_reason || '', kyc.reviewed_by, kyc.reviewed_at, kyc.firestore_doc_id || null, kycId);
+      db.prepare('UPDATE users SET is_verified = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(kyc.user_id);
+    })();
+    req.session.error = 'KYC rejection could not be saved because Firestore is temporarily unavailable. Please retry.';
+    return res.redirect('/admin/approvals?section=kyc');
+  }
 
   addAuditLog(req.session.userId, 'REJECT_KYC', 'kyc', kycId, `Rejected KYC #${kycId}: ${reason}`, req.ip);
   addNotification(kyc.user_id, 'KYC Rejected', `Your KYC was rejected: ${reason || 'Please resubmit valid documents.'}`, 'warning');
