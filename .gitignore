@@ -4,4 +4,8 @@ database.db
 database.db-wal
 database.db-shm
 .env
+.env.*
+!.env.example
+.dev.vars*
+.wrangler/
 npm-debug.log*

@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tcub",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-11",
+  "containers": [
+    {
+      "class_name": "TCUBContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "base": {
+          "dockerfile": "./Dockerfile"
+        }
+      }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "TCUB_CONTAINER",
+        "class_name": "TCUBContainer"
+      }
+    ]
+  },
+  "exports": {
+    "TCUBContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

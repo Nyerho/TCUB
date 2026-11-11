@@ -2,10 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const Layer = require('express/lib/router/layer');
 const path = require('path');
-const fs = require('fs');
 const cookieSession = require('cookie-session');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
 const cookieParser = require('cookie-parser');
 const moment = require('moment');
 
@@ -40,7 +37,11 @@ Layer.prototype.handle_request = function patchedAsyncHandleRequest(req, res, ne
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.CLOUDFLARE_CONTAINER
+);
 const RESOLVED_FIREBASE_PROJECT_ID = getResolvedProjectId();
 const firebaseWebConfig = {
   apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyDwY1C_z2plqfUE42zKmN9N9RiCzlTH4fg',
@@ -79,38 +80,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const sessionSecret = process.env.SESSION_SECRET || 'think-union-credit-bank-super-secret-key-2026';
+const sessionSecret = process.env.SESSION_SECRET || (
+  process.env.NODE_ENV === 'production'
+    ? (() => { throw new Error('SESSION_SECRET must be set in production'); })()
+    : 'local-development-only-session-secret'
+);
 
-if (isServerless) {
-  app.use(cookieSession({
-    name: 'ucb_session',
-    keys: [sessionSecret],
-    maxAge: 24 * 60 * 60 * 1000,
-    httpOnly: true,
-    // Serverless deployments are HTTPS and may be opened from embedded
-    // previews or different devices, so the session must be cross-site safe.
-    secure: true,
-    sameSite: 'none'
-  }));
-} else {
-  const sessionConfig = {
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production'
-    }
-  };
-  const sessionPath = path.join(__dirname, '.sessions');
-  fs.mkdirSync(sessionPath, { recursive: true });
-  sessionConfig.store = new FileStore({
-    path: sessionPath,
-    retries: 1
-  });
-  app.use(session(sessionConfig));
-}
+app.use(cookieSession({
+  name: 'ucb_session',
+  keys: [sessionSecret],
+  maxAge: 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  // Cloudflare Containers are served over HTTPS. SameSite=None also keeps
+  // embedded previews working across origins.
+  secure: process.env.NODE_ENV === 'production' || isServerless,
+  sameSite: isServerless ? 'none' : 'lax'
+}));
 
 
 // Restore the lightweight user profile when a serverless request carries a valid
@@ -331,6 +316,12 @@ app.use('/billpay', billPayRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);
 
+// Cloudflare Container readiness probe. Keep this before the 404 handler and
+// independent of authentication, sessions, or Firebase availability.
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.use((req, res) => {
   res.status(404).render('errors/404', {
     title: 'Page Not Found - Think Union Credit Bank',
@@ -348,8 +339,8 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Think Union Credit Bank server running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Think Union Credit Bank server running on http://0.0.0.0:${PORT}`);
   });
 }
 
