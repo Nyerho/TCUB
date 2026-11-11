@@ -253,13 +253,16 @@ app.use((req, res, next) => {
 
 app.use(async (req, res, next) => {
   if (req.session.userId) {
-    let user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
-    if (!user && isFirestoreEnabled()) {
+    let user = null;
+    if (isFirestoreEnabled()) {
       try {
         user = await hydrateUserFromFirestoreById(req.session.userId);
       } catch (error) {
         console.error('Failed to hydrate session user from Firestore:', error);
+        return next(error);
       }
+    } else {
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
     }
     if (user) {
       if (isFirestoreEnabled()) {
@@ -284,6 +287,7 @@ app.use(async (req, res, next) => {
         is_verified: Number(user.is_verified) === 1 ? 1 : 0,
         is_frozen: Number(user.is_frozen) === 1 ? 1 : 0
       };
+      res.locals.user = req.session.user;
     } else {
       req.session.user = null;
       req.session.userId = null;
@@ -294,6 +298,7 @@ app.use(async (req, res, next) => {
 
 const indexRoutes = require('./routes/index');
 const authRoutes = require('./routes/auth');
+const userProfileRoutes = require('./routes/user-profile');
 const userRoutes = require('./routes/user');
 const accountRoutes = require('./routes/accounts');
 const transferRoutes = require('./routes/transfers');
@@ -306,6 +311,7 @@ const apiRoutes = require('./routes/api');
 
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
+app.use('/user', userProfileRoutes);
 app.use('/user', userRoutes);
 app.use('/accounts', accountRoutes);
 app.use('/transfers', transferRoutes);

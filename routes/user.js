@@ -1,10 +1,7 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const { body, validationResult } = require('express-validator');
 const { db } = require('../database');
 const {
   requireAuth,
-  requireVerified,
   getUserAccounts,
   getRecentTransactions,
   getNotifications
@@ -12,10 +9,6 @@ const {
 const { isFirestoreEnabled, hydrateKycForUserFromFirestore } = require('../services/firestore-sync');
 
 const router = express.Router();
-
-function hasTransferPin(user) {
-  return Boolean(user && user.transfer_pin_hash);
-}
 
 function isIncomingTransaction(tx) {
   if (!tx || tx.status !== 'completed') {
@@ -106,119 +99,6 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     pendingCards,
     pendingLoans
   });
-});
-
-router.get('/profile', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
-  res.render('user/profile', {
-    title: 'My Profile - Think Union Credit Bank',
-    page: 'profile',
-    user
-  });
-});
-
-router.post('/profile', requireAuth, [
-  body('first_name').trim().isLength({ min: 2 }),
-  body('last_name').trim().isLength({ min: 2 }),
-  body('phone').isLength({ min: 6 }),
-  body('email').isEmail()
-], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    req.session.error = 'Please check your input and try again.';
-    return res.redirect('/user/profile');
-  }
-
-  const { first_name, last_name, email, phone, address, city, state, postcode, date_of_birth } = req.body;
-  const userId = req.session.userId;
-
-  const existingEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
-  if (existingEmail) {
-    req.session.error = 'This email is already in use.';
-    return res.redirect('/user/profile');
-  }
-
-  db.prepare(`
-    UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ?, city = ?, state = ?, postcode = ?, date_of_birth = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(first_name, last_name, email, phone, address, city, state, postcode, date_of_birth, userId);
-
-  req.session.user.first_name = first_name;
-  req.session.user.last_name = last_name;
-  req.session.user.email = email;
-
-  req.session.success = 'Profile updated successfully.';
-  res.redirect('/user/profile');
-});
-
-router.get('/settings', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
-  res.render('user/settings', {
-    title: 'Settings - Think Union Credit Bank',
-    page: 'settings',
-    user,
-    hasTransferPin: hasTransferPin(user)
-  });
-});
-
-router.post('/change-password', requireAuth, [
-  body('current_password').exists(),
-  body('new_password').isLength({ min: 8 }),
-  body('confirm_password').custom((value, { req }) => value === req.body.new_password)
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    req.session.error = 'Password must be at least 8 characters and match confirmation.';
-    return res.redirect('/user/settings');
-  }
-
-  const { current_password, new_password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
-
-  const isValid = await bcrypt.compare(current_password, user.password);
-  if (!isValid) {
-    req.session.error = 'Current password is incorrect.';
-    return res.redirect('/user/settings');
-  }
-
-  const hashedPassword = await bcrypt.hash(new_password, 10);
-  db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hashedPassword, req.session.userId);
-
-  req.session.success = 'Password changed successfully.';
-  res.redirect('/user/settings');
-});
-
-router.post('/settings/transfer-pin', requireAuth, [
-  body('current_password').exists(),
-  body('transfer_pin').matches(/^\d{4,6}$/),
-  body('confirm_transfer_pin').custom((value, { req }) => value === req.body.transfer_pin)
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    req.session.error = 'Transfer PIN must be 4 to 6 digits and match the confirmation field.';
-    return res.redirect('/user/settings');
-  }
-
-  const { current_password, transfer_pin } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
-
-  const validPassword = await bcrypt.compare(current_password, user.password);
-  if (!validPassword) {
-    req.session.error = 'Current password is incorrect.';
-    return res.redirect('/user/settings');
-  }
-
-  const pinHash = await bcrypt.hash(transfer_pin, 10);
-  db.prepare(`
-    UPDATE users
-    SET transfer_pin_hash = ?, transfer_pin_updated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(pinHash, req.session.userId);
-
-  req.session.success = hasTransferPin(user)
-    ? 'Transfer PIN updated successfully.'
-    : 'Transfer PIN created successfully.';
-  res.redirect('/user/settings');
 });
 
 router.get('/statements', requireAuth, (req, res) => {
