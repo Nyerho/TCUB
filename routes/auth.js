@@ -7,6 +7,7 @@ const { requireAuth } = require('../middleware/auth');
 const { syncLocalUserToFirebaseAuth } = require('../lib/firebase-admin');
 const {
   getAppBaseUrl,
+  isEmailConfigured,
   sendAccountWelcomeEmail,
   sendLoginWelcomeEmail,
   sendPasswordResetEmail,
@@ -46,6 +47,24 @@ async function verifyFirebasePassword(email, password) {
     console.error('Firebase Auth password verification failed:', error);
     return { verified: false, unavailable: true };
   }
+}
+
+async function sendFirebasePasswordResetEmail(email) {
+  const apiKey = process.env.FIREBASE_API_KEY || '';
+  if (!apiKey) {
+    return { sent: false, skipped: true, reason: 'firebase-api-key-not-configured' };
+  }
+
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ requestType: 'PASSWORD_RESET', email })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error && result.error.message ? result.error.message : `Firebase password reset failed with HTTP ${response.status}`);
+  }
+  return { sent: true, provider: 'firebase' };
 }
 
 function hydrateConfiguredFirebaseAdmin(firebaseUser, password) {
@@ -423,9 +442,17 @@ router.get('/forgot-password', (req, res) => {
 
 router.post('/forgot-password', async (req, res) => {
   const normalizedEmail = String(req.body.email || '').trim().toLowerCase();
-  const user = normalizedEmail
+  let user = normalizedEmail
     ? db.prepare('SELECT * FROM users WHERE email = ?').get(normalizedEmail)
     : null;
+
+  if (!user && normalizedEmail && isFirestoreEnabled()) {
+    try {
+      user = await hydrateUserFromFirestoreByEmail(normalizedEmail);
+    } catch (error) {
+      console.error(`Failed to hydrate forgot-password user ${normalizedEmail} from Firestore:`, error);
+    }
+  }
 
   if (user) {
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -440,9 +467,25 @@ router.post('/forgot-password', async (req, res) => {
 
     const resetUrl = `${getAppBaseUrl(req)}/auth/reset-password?token=${rawToken}`;
     try {
-      await sendPasswordResetEmail(user, resetUrl);
+      const emailResult = await sendPasswordResetEmail(user, resetUrl);
+      if (emailResult.skipped && !isEmailConfigured()) {
+        await sendFirebasePasswordResetEmail(normalizedEmail);
+      }
     } catch (error) {
       console.error(`Failed to send password reset email for ${normalizedEmail}:`, error);
+      try {
+        await sendFirebasePasswordResetEmail(normalizedEmail);
+      } catch (firebaseError) {
+        console.error(`Firebase password reset fallback failed for ${normalizedEmail}:`, firebaseError);
+      }
+    }
+  }
+
+  if (!user && normalizedEmail) {
+    try {
+      await sendFirebasePasswordResetEmail(normalizedEmail);
+    } catch (error) {
+      console.error(`Firebase password reset request failed for ${normalizedEmail}:`, error);
     }
   }
 
