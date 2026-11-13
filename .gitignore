@@ -8,4 +8,7 @@ database.db-shm
 !.env.example
 .dev.vars*
 .wrangler/
+.netlify/
+netlify/functions/*.zip
+netlify/functions/manifest.json
 npm-debug.log*

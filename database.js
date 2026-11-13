@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 
 const bundledDbPath = path.join(__dirname, 'database.db');
-const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
 
 function resolveDbPath() {
   if (!isServerless) {

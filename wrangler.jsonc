@@ -3,29 +3,48 @@
   "name": "tcub",
   "main": "src/index.js",
   "compatibility_date": "2026-11-11",
-  "containers": [
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "alias": {
+    "express": "./src/express-worker.js"
+  },
+  "find_additional_modules": true,
+  "preserve_file_names": true,
+  "rules": [
     {
-      "class_name": "TCUBContainer",
-      "scheduling_policy": "durable_object",
-      "images": {
-        "base": {
-          "dockerfile": "./Dockerfile"
-        }
-      }
+      "type": "CommonJS",
+      "globs": ["**/*.generated.js"],
+      "fallthrough": false
     }
   ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
   "durable_objects": {
     "bindings": [
       {
-        "name": "TCUB_CONTAINER",
-        "class_name": "TCUBContainer"
+        "name": "TCUB_APP",
+        "class_name": "TCUBApp"
       }
     ]
   },
   "exports": {
-    "TCUBContainer": {
+    "TCUBApp": {
       "type": "durable-object",
       "storage": "sqlite"
     }
+  },
+  "vars": {
+    "NODE_ENV": "production",
+    "FIREBASE_PROJECT_ID": "tcub-b96a6",
+    "FIREBASE_AUTH_DOMAIN": "tcub-b96a6.firebaseapp.com",
+    "FIREBASE_STORAGE_BUCKET": "tcub-b96a6.firebasestorage.app",
+    "FIREBASE_MESSAGING_SENDER_ID": "235825524366",
+    "FIREBASE_APP_ID": "1:235825524366:web:07115b8e05c4dace4c23df",
+    "FIREBASE_MEASUREMENT_ID": "G-8J4ETW9J8N",
+    "SUPPORT_EMAIL": "support@thinkcreditunionbank.xyz",
+    "JIVO_WIDGET_ID": "KpAyqA9d1Z"
   }
 }

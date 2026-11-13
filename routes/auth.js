@@ -259,23 +259,10 @@ router.post('/register', [
       });
     }
   } else {
+    // Cloudflare Workers uses Durable Object SQLite as the authoritative store.
+    // Firestore synchronization is optional and intentionally skipped here.
     firestoreSyncSkipped = true;
-    console.error(`${requestTag} step=firestore_sync status=FAILED reason=Firebase Admin credentials are not configured`);
-    console.error(`${requestTag} registration refused: local-only accounts are disabled`);
-    try {
-      db.prepare('DELETE FROM accounts WHERE user_id = ?').run(result.lastInsertRowid);
-      db.prepare('DELETE FROM users WHERE id = ?').run(result.lastInsertRowid);
-    } catch (rollbackError) {
-      console.error(`${requestTag} rollback failed: ${String(rollbackError.message || rollbackError)}`);
-    }
-    const configErr = 'Account creation is temporarily unavailable because the secure Firebase account service is not configured. Please try again later.';
-    req.session.error = configErr;
-    return res.render('auth/register', {
-      title: 'Open Account - Think Union Credit Bank',
-      page: 'register',
-      old: req.body,
-      error: configErr
-    });
+    console.log(`${requestTag} step=firestore_sync status=skipped reason=durable-object-sqlite-authoritative`);
   }
 
   req.session.success = 'Account created successfully! Please login to continue.';
@@ -317,21 +304,15 @@ router.post('/login', async (req, res) => {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  if (!isFirestoreEnabled()) {
-    req.session.error = 'Account data is temporarily unavailable. Please try again shortly.';
-    return res.redirect('/auth/login');
-  }
-
   let user;
-  try {
-    // Firestore is authoritative: a warm server's SQLite file may be an old
-    // snapshot or may belong to another serverless instance.
-    user = await hydrateUserFromFirestoreByEmail(normalizedEmail);
-  } catch (error) {
-    console.error('Failed to hydrate user from Firestore during login:', error);
-    req.session.error = 'Account data is temporarily unavailable. Please try again shortly.';
-    return res.redirect('/auth/login');
+  if (isFirestoreEnabled()) {
+    try {
+      user = await hydrateUserFromFirestoreByEmail(normalizedEmail);
+    } catch (error) {
+      console.error('Failed to hydrate user from Firestore during login:', error);
+    }
   }
+  user ||= db.prepare('SELECT * FROM users WHERE email = ?').get(normalizedEmail);
 
   const authResult = await verifyFirebasePassword(normalizedEmail, password);
   if (!user && authResult.verified) {

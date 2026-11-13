@@ -40,7 +40,8 @@ const PORT = process.env.PORT || 3000;
 const isServerless = Boolean(
   process.env.VERCEL ||
   process.env.AWS_LAMBDA_FUNCTION_NAME ||
-  process.env.CLOUDFLARE_CONTAINER
+  process.env.CLOUDFLARE_CONTAINER ||
+  process.env.NETLIFY
 );
 const RESOLVED_FIREBASE_PROJECT_ID = getResolvedProjectId();
 const firebaseWebConfig = {
@@ -55,7 +56,8 @@ const firebaseWebConfig = {
 const jivoWidgetId = process.env.JIVO_WIDGET_ID || 'KpAyqA9d1Z';
 
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+const appRoot = process.env.NETLIFY ? process.cwd() : __dirname;
+app.set('views', path.join(appRoot, 'views'));
 app.set('trust proxy', 1);
 app.locals.supportEmail = process.env.SUPPORT_EMAIL || 'support@thinkcreditunionbank.xyz';
 
@@ -78,7 +80,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(appRoot, 'public')));
 
 const sessionSecret = process.env.SESSION_SECRET || (
   process.env.NODE_ENV === 'production'
