@@ -45,10 +45,10 @@ const isServerless = Boolean(
 );
 const RESOLVED_FIREBASE_PROJECT_ID = getResolvedProjectId();
 const firebaseWebConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || 'AIzaSyDwY1C_z2plqfUE42zKmN9N9RiCzlTH4fg',
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || 'tcub-b96a6.firebaseapp.com',
+  apiKey: process.env.FIREBASE_API_KEY || '',
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || '',
   projectId: RESOLVED_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'tcub-b96a6.firebasestorage.app',
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
   messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '235825524366',
   appId: process.env.FIREBASE_APP_ID || '1:235825524366:web:07115b8e05c4dace4c23df',
   measurementId: process.env.FIREBASE_MEASUREMENT_ID || 'G-8J4ETW9J8N'

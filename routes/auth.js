@@ -27,7 +27,10 @@ function hashResetToken(token) {
 }
 
 async function verifyFirebasePassword(email, password) {
-  const apiKey = process.env.FIREBASE_API_KEY || 'AIzaSyDwY1C_z2plqfUE42zKmN9N9RiCzlTH4fg';
+  const apiKey = process.env.FIREBASE_API_KEY || '';
+  if (!apiKey) {
+    return { verified: false, unavailable: true, error: 'FIREBASE_API_KEY_MISSING' };
+  }
   try {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
