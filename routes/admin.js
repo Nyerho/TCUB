@@ -70,13 +70,14 @@ function buildCustomerScope(extraConditions = '') {
 
 async function hydrateAdminCustomerDirectory() {
   if (!isFirestoreEnabled()) {
-    return;
+    return true;
   }
-
   try {
     await hydrateRecentCustomersFromFirestore(Number.MAX_SAFE_INTEGER, { includeTransactions: false });
+    return true;
   } catch (error) {
     console.error('Failed to hydrate admin customer directory from Firestore:', error);
+    return false;
   }
 }
 
@@ -1546,7 +1547,12 @@ router.get('/loans', requireAdmin, (req, res) => {
   });
 });
 
-router.get('/transactions/new', requireAdmin, (req, res) => {
+router.get('/transactions/new', requireAdmin, async (req, res) => {
+  const directoryLoaded = await hydrateAdminCustomerDirectory();
+  if (isFirestoreEnabled() && !directoryLoaded) {
+    req.session.error = 'Customer accounts could not be loaded right now. Please try again.';
+    return res.redirect('/admin/transactions');
+  }
   const accounts = db.prepare(`
     SELECT a.*, u.first_name, u.last_name, u.email,
       (u.first_name || ' ' || u.last_name) as user_name
@@ -1572,6 +1578,11 @@ router.get('/transactions/new', requireAdmin, (req, res) => {
 });
 
 router.post('/transactions/create', requireAdmin, async (req, res) => {
+  const directoryLoaded = await hydrateAdminCustomerDirectory();
+  if (isFirestoreEnabled() && !directoryLoaded) {
+    req.session.error = 'Customer accounts could not be loaded, so no transaction was created. Please try again.';
+    return res.redirect('/admin/transactions/new');
+  }
   const payload = buildTransactionPayload(req.body);
   const account = db.prepare(`
     SELECT a.*, u.first_name, u.last_name
