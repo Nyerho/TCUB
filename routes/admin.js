@@ -4,7 +4,8 @@ const { db, generateAccountNumber, generateCardNumber, generateCVV } = require('
 const { syncLocalUserToFirebaseAuth } = require('../lib/firebase-admin');
 const {
   sendPasswordChangedEmail,
-  sendTransactionActivityEmailById
+  sendTransactionActivityEmailById,
+  emailConfigurationStatus
 } = require('../services/email');
 const {
   requireAdmin,
@@ -27,7 +28,10 @@ const {
 } = require('../services/firestore-sync');
 
 const router = express.Router();
-
+router.get('/email-status', requireAdmin, (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ provider: 'brevo', ...emailConfigurationStatus() });
+});
 const OUTGOING_TYPES = new Set(['local_transfer', 'international_transfer', 'withdrawal', 'bill_payment', 'loan_payment']);
 const INCOMING_TYPES = new Set(['deposit', 'loan_disbursement']);
 const ACCOUNT_STATUS_OPTIONS = new Set(['active', 'frozen', 'blocked', 'closed']);
@@ -177,11 +181,16 @@ async function syncUserBundle(userId) {
   }
 }
 
-function queueTransactionEmail(txnId, note) {
+async function queueTransactionEmail(txnId, note) {
   if (!txnId) return;
-  sendTransactionActivityEmailById(txnId, note ? { note } : {}).catch((error) => {
-    console.error(`Failed to send transaction email for txn ${txnId}:`, error);
-  });
+  try {
+    const result = await sendTransactionActivityEmailById(txnId, note ? { note } : {});
+    if (result.skipped) console.warn(`[email] transaction notification skipped: ${result.reason}`);
+    return result;
+  } catch (error) {
+    console.error(`[email] transaction notification failed for transaction ${txnId}:`, error.message);
+    return { sent: false, error: error.message };
+  }
 }
 
 function applyAccountImpact(accountId, impact, multiplier = 1) {
@@ -687,9 +696,11 @@ router.post('/users/:id/reset-password', requireAdmin, async (req, res) => {
   ).catch((error) => {
     console.error('Failed to sync password reset to Firebase Authentication:', error);
   });
-  sendPasswordChangedEmail(existingUser).catch((error) => {
-    console.error('Failed to send admin reset password email:', error);
-  });
+  try {
+    await sendPasswordChangedEmail(existingUser);
+  } catch (error) {
+    console.error('[email] failed to send admin password-change email:', error.message);
+  }
   addAuditLog(req.session.userId, 'RESET_PASSWORD', 'user', userId, `Reset password for user ID ${userId}`, req.ip);
   addNotification(userId, 'Password Reset', 'Your password has been reset by an administrator.', 'info');
 
@@ -760,7 +771,7 @@ router.post('/users/:id/accounts/create', requireAdmin, async (req, res) => {
   addAuditLog(req.session.userId, 'CREATE_ACCOUNT', 'account', accountId, `Created ${account_type} account for user ${userId} with balance $${initBalance}`, req.ip);
   addNotification(userId, 'New Account Opened', `Your ${account_type || 'Everyday Savings'} account has been opened${initBalance > 0 ? ` with an initial balance of $${initBalance.toLocaleString()}` : ''}.`, 'success');
   if (txnId) {
-    queueTransactionEmail(txnId, 'Your new account opening deposit has been recorded.');
+    await queueTransactionEmail(txnId, 'Your new account opening deposit has been recorded.');
   }
 
   if (!req.session.error) {
@@ -822,7 +833,7 @@ router.post('/users/:id/adjust-balance', requireAdmin, async (req, res) => {
 
   addAuditLog(req.session.userId, 'BALANCE_ADJUSTMENT', 'account', account_id, `${adjustment_type === 'credit' ? 'Credited' : 'Debited'} $${amt} to account ${account.account_number}: ${reason}`, req.ip);
   addNotification(userId, 'Account Adjustment', `Your account has been ${adjustment_type === 'credit' ? 'credited' : 'debited'} $${amt.toLocaleString()}.`, adjustment_type === 'credit' ? 'success' : 'warning');
-  queueTransactionEmail(transactionId, `An administrator ${adjustment_type === 'credit' ? 'credited' : 'debited'} your account.`);
+  await queueTransactionEmail(transactionId, `An administrator ${adjustment_type === 'credit' ? 'credited' : 'debited'} your account.`);
 
   if (!req.session.error) {
     req.session.success = `Balance adjusted: $${amt.toLocaleString()} ${adjustment_type === 'credit' ? 'credited' : 'debited'}.`;
@@ -1090,7 +1101,7 @@ router.post('/transactions/:id/approve', requireAdmin, async (req, res) => {
     await syncAccountAndTxnToFirestore(txn.account_id, txnId);
     addAuditLog(req.session.userId, 'REJECT_TRANSACTION', 'transaction', txnId, `Rejected txn #${txnId}: ${restrictionMessage}`, req.ip);
     addNotification(txn.user_id, 'Transaction Rejected', restrictionMessage, 'warning');
-    queueTransactionEmail(txnId, restrictionMessage);
+    await queueTransactionEmail(txnId, restrictionMessage);
     req.session.error = restrictionMessage;
     return res.redirect('/admin/approvals?section=transfers');
   }
@@ -1109,7 +1120,7 @@ router.post('/transactions/:id/approve', requireAdmin, async (req, res) => {
 
   addAuditLog(req.session.userId, 'APPROVE_TRANSACTION', 'transaction', txnId, `Approved ${txn.transaction_type} of $${txn.amount}`, req.ip);
   addNotification(txn.user_id, 'Transaction Approved', `Your ${txn.transaction_type} of $${parseFloat(txn.amount).toLocaleString()} has been approved.`, 'success');
-  queueTransactionEmail(txnId, 'Your transaction has been approved.');
+  await queueTransactionEmail(txnId, 'Your transaction has been approved.');
 
   if (txn.transaction_type === 'bill_payment') {
     db.prepare("UPDATE bill_payments SET status = 'completed', approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id IN (SELECT id FROM bill_payments WHERE user_id = ? AND amount = ? AND status = 'pending' ORDER BY id DESC LIMIT 1)").run(req.session.userId, txn.user_id, txn.amount);
@@ -1143,7 +1154,7 @@ router.post('/transactions/:id/reject', requireAdmin, async (req, res) => {
   await syncAccountAndTxnToFirestore(txn.account_id, txnId);
   addAuditLog(req.session.userId, 'REJECT_TRANSACTION', 'transaction', txnId, `Rejected txn #${txnId}: ${reason}`, req.ip);
   addNotification(txn.user_id, 'Transaction Rejected', `Your transaction was rejected: ${reason || 'Unable to process.'}`, 'warning');
-  queueTransactionEmail(txnId, reason || 'Your transaction was rejected.');
+  await queueTransactionEmail(txnId, reason || 'Your transaction was rejected.');
 
   req.session.success = 'Transaction rejected.';
   res.redirect('/admin/approvals?section=transfers');
@@ -1216,7 +1227,7 @@ router.post('/loans/:id/approve', requireAdmin, async (req, res) => {
   addAuditLog(req.session.userId, 'APPROVE_LOAN', 'loan', loanId, `Approved ${loan.loan_type} of $${loan.loan_amount} for user ${loan.user_id}`, req.ip);
   addNotification(loan.user_id, 'Loan Approved', `Your ${loan.loan_type} of $${parseFloat(loan.loan_amount).toLocaleString()} has been approved and disbursed!`, 'success');
   if (newTxnId) {
-    queueTransactionEmail(newTxnId, 'Your approved loan has been disbursed to your account.');
+    await queueTransactionEmail(newTxnId, 'Your approved loan has been disbursed to your account.');
   }
 
   req.session.success = 'Loan approved and disbursed successfully.';
@@ -1277,7 +1288,7 @@ router.post('/bills/:id/approve', requireAdmin, async (req, res) => {
   addAuditLog(req.session.userId, 'APPROVE_BILLPAY', 'bill_payment', billId, `Approved bill payment of $${bill.amount} to ${bill.biller_name}`, req.ip);
   addNotification(bill.user_id, 'Bill Payment Approved', `Your $${parseFloat(bill.amount).toLocaleString()} payment to ${bill.biller_name} has been approved.`, 'success');
   if (newTxnId) {
-    queueTransactionEmail(newTxnId, 'Your bill payment has been approved and processed.');
+    await queueTransactionEmail(newTxnId, 'Your bill payment has been approved and processed.');
   }
 
   req.session.success = 'Bill payment approved successfully.';
@@ -1628,7 +1639,7 @@ router.post('/transactions/create', requireAdmin, async (req, res) => {
 
   addAuditLog(req.session.userId, 'CREATE_TRANSACTION', 'transaction', transactionId, `Created ${payload.transaction_type} on account ${account.account_number}`, req.ip);
   addNotification(account.user_id, 'Account Transaction Added', `An administrator added a ${payload.transaction_type.replace(/_/g, ' ')} transaction to your account.`, payload.status === 'completed' ? 'info' : 'warning');
-  queueTransactionEmail(transactionId, 'An administrator created this transaction on your account.');
+  await queueTransactionEmail(transactionId, 'An administrator created this transaction on your account.');
 
   if (!req.session.error) {
     req.session.success = 'Transaction created successfully.';

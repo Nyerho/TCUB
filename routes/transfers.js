@@ -19,11 +19,16 @@ const router = express.Router();
 
 const OUTGOING_TYPES = new Set(['local_transfer', 'international_transfer', 'withdrawal', 'bill_payment', 'loan_payment']);
 
-function queueTransactionEmail(txnId, note) {
+async function queueTransactionEmail(txnId, note) {
   if (!txnId) return;
-  sendTransactionActivityEmailById(txnId, note ? { note } : {}).catch((error) => {
-    console.error(`Failed to send transaction email for txn ${txnId}:`, error);
-  });
+  try {
+    const result = await sendTransactionActivityEmailById(txnId, note ? { note } : {});
+    if (result.skipped) console.warn(`[email] transaction notification skipped: ${result.reason}`);
+    return result;
+  } catch (error) {
+    console.error(`[email] transaction notification failed for transaction ${txnId}:`, error.message);
+    return { sent: false, error: error.message };
+  }
 }
 
 function getTransferUser(userId) {
@@ -160,7 +165,7 @@ router.post('/local', requireAuth, requireVerified, async (req, res) => {
       console.error('Failed to sync local transfer to Firestore:', err);
     }
   }
-  queueTransactionEmail(txnId, status === 'completed' ? 'Your transfer has been completed.' : 'Your transfer is pending approval.');
+  await queueTransactionEmail(txnId, status === 'completed' ? 'Your transfer has been completed.' : 'Your transfer is pending approval.');
 
   if (save_beneficiary && beneficiary_name) {
     const exists = db.prepare('SELECT id FROM beneficiaries WHERE user_id = ? AND account_number = ?').get(req.session.userId, to_account);
@@ -296,7 +301,7 @@ router.post('/international', requireAuth, requireVerified, async (req, res) => 
       console.error('Failed to sync international transfer to Firestore:', err);
     }
   }
-  queueTransactionEmail(txnId, 'Your international transfer request has been submitted.');
+  await queueTransactionEmail(txnId, 'Your international transfer request has been submitted.');
 
   if (save_beneficiary && beneficiary_name) {
     db.prepare(`
@@ -395,7 +400,7 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
   }
 
   addNotification(req.session.userId, 'Transfer Cancelled', `Transfer ${transaction.id} has been cancelled`, 'info');
-  queueTransactionEmail(req.params.id, 'This transaction was cancelled.');
+  await queueTransactionEmail(req.params.id, 'This transaction was cancelled.');
   req.session.success = 'Transfer cancelled successfully.';
   res.redirect(`/transfers/${req.params.id}`);
 });

@@ -16,11 +16,16 @@ const { sendTransactionActivityEmailById } = require('../services/email');
 
 const router = express.Router();
 
-function queueTransactionEmail(txnId, note) {
+async function queueTransactionEmail(txnId, note) {
   if (!txnId) return;
-  sendTransactionActivityEmailById(txnId, note ? { note } : {}).catch((error) => {
-    console.error(`Failed to send transaction email for txn ${txnId}:`, error);
-  });
+  try {
+    const result = await sendTransactionActivityEmailById(txnId, note ? { note } : {});
+    if (result.skipped) console.warn(`[email] transaction notification skipped: ${result.reason}`);
+    return result;
+  } catch (error) {
+    console.error(`[email] transaction notification failed for transaction ${txnId}:`, error.message);
+    return { sent: false, error: error.message };
+  }
 }
 
 const LOAN_TYPES = [
@@ -313,7 +318,7 @@ router.post('/:id/payment', requireAuth, async (req, res) => {
   }
 
   addNotification(req.session.userId, 'Loan Payment Made', `Payment of $${payAmount.toLocaleString()} made to ${loan.loan_type}.`, 'success');
-  queueTransactionEmail(txnId, 'Your loan repayment was applied successfully.');
+  await queueTransactionEmail(txnId, 'Your loan repayment was applied successfully.');
   req.session.success = 'Payment successful!';
   res.redirect(`/loans/${req.params.id}`);
 });

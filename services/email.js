@@ -62,6 +62,8 @@ function normalizeRecipients(to) {
 async function sendEmail({ to, subject, html, text }) {
   const config = getEmailConfig();
   if (!config.apiKey || !config.senderEmail) {
+    const missing = [!config.apiKey && 'BREVO_API_KEY', !config.senderEmail && 'EMAIL_FROM'].filter(Boolean);
+    console.warn(`[email] skipped: missing runtime configuration (${missing.join(', ')})`);
     return { sent: false, skipped: true, reason: 'email-not-configured' };
   }
 
@@ -88,7 +90,8 @@ async function sendEmail({ to, subject, html, text }) {
         'content-type': 'application/json',
         'api-key': config.apiKey
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000)
     });
   } catch (error) {
     throw new Error(`Brevo request failed: ${error.message}`);
@@ -100,6 +103,7 @@ async function sendEmail({ to, subject, html, text }) {
   }
 
   const result = await response.json().catch(() => ({}));
+  console.info(`[email] Brevo accepted messageId=${result.messageId || 'not-returned'} recipients=${recipients.length}`);
   return { sent: true, messageId: result.messageId || null };
 }
 
