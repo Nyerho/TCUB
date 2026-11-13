@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const Layer = require('express/lib/router/layer');
 const path = require('path');
+const fs = require('fs');
 const cookieSession = require('cookie-session');
 const cookieParser = require('cookie-parser');
 const moment = require('moment');
@@ -56,7 +57,14 @@ const firebaseWebConfig = {
 const jivoWidgetId = process.env.JIVO_WIDGET_ID || 'KpAyqA9d1Z';
 
 app.set('view engine', 'ejs');
-const appRoot = process.env.NETLIFY ? process.cwd() : __dirname;
+const appRootCandidates = [
+  process.cwd(),
+  __dirname,
+  path.resolve(__dirname, '..'),
+  path.resolve(__dirname, '../..'),
+  path.resolve(__dirname, '../../..')
+];
+const appRoot = appRootCandidates.find((candidate) => fs.existsSync(path.join(candidate, 'views'))) || process.cwd();
 app.set('views', path.join(appRoot, 'views'));
 app.set('trust proxy', 1);
 app.locals.supportEmail = process.env.SUPPORT_EMAIL || 'support@thinkcreditunionbank.xyz';
@@ -325,19 +333,28 @@ app.get('/health', (req, res) => {
 });
 
 app.use((req, res) => {
-  res.status(404).render('errors/404', {
-    title: 'Page Not Found - Think Union Credit Bank',
-    page: '404'
-  });
+  try {
+    res.status(404).render('errors/404', {
+      title: 'Page Not Found - Think Union Credit Bank',
+      page: '404'
+    });
+  } catch (renderError) {
+    console.error('Failed to render 404 page:', renderError);
+    res.status(404).type('text').send('Page not found');
+  }
 });
-
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).render('errors/500', {
-    title: 'Server Error - Think Union Credit Bank',
-    page: '500',
-    error: process.env.NODE_ENV === 'development' ? err.message : null
-  });
+  try {
+    res.status(500).render('errors/500', {
+      title: 'Server Error - Think Union Credit Bank',
+      page: '500',
+      error: process.env.NODE_ENV === 'development' ? err.message : null
+    });
+  } catch (renderError) {
+    console.error('Failed to render 500 page:', renderError);
+    res.status(500).type('text').send('Internal server error');
+  }
 });
 
 if (require.main === module) {
