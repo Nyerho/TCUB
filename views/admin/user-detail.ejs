@@ -28,7 +28,9 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="document.getElementById('editUserModal').classList.add('active')">✏️ Edit</button>
         <% if (!customer.is_admin) { %>
-          <a href="/admin/users/<%= customer.id %>/freeze" class="btn btn-warning"><%= customer.is_frozen ? '🔥 Unfreeze' : '❄️ Freeze' %></a>
+          <form method="POST" action="/admin/users/<%= customer.id %>/freeze" style="display:inline;" onsubmit="return confirm('<%= customer.is_frozen ? 'Unfreeze' : 'Freeze' %> this user?');">
+            <button type="submit" class="btn btn-warning"><%= customer.is_frozen ? '🔥 Unfreeze' : '❄️ Freeze' %></button>
+          </form>
         <% } %>
         <button class="btn btn-outline" onclick="document.getElementById('pwModal').classList.add('active')">🔐 Reset PW</button>
         <a href="/admin/transactions/new?user_id=<%= customer.id %>" class="btn btn-light">➕ Add Transaction</a>

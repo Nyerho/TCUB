@@ -2902,3 +2902,33 @@ a:hover {
     overflow-x: auto;
   }
 }
+
+/* Keep the dashboard shell compact and the desktop navigation visible. */
+@media (min-width: 992px) {
+  .layout {
+    width: 100%;
+    min-width: 0;
+  }
+  .sidebar.offcanvas-lg {
+    display: flex !important;
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+    height: 100vh;
+    position: sticky;
+    inset: 0 auto auto 0;
+    visibility: visible !important;
+    transform: none !important;
+    pointer-events: auto;
+    background: #fff;
+  }
+  .sidebar.offcanvas-lg .sidebar-menu,
+  .sidebar.offcanvas-lg .sidebar-footer {
+    display: block !important;
+  }
+  .layout > .main {
+    width: calc(100% - 260px);
+    flex: 1 1 0%;
+  }
+}
