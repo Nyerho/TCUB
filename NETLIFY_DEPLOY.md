@@ -45,7 +45,15 @@ EMAIL_REPLY_TO=support@your-domain.example
 
 `EMAIL_FROM` must be a sender that has been verified in Brevo. After adding or changing these values in Netlify, create a new deploy before testing registration or sign-in. The application never logs the API key; missing configuration causes email delivery to be skipped safely, while Brevo API failures are written to the function logs with the HTTP status.
 
-Firebase Admin/Firestore synchronization is disabled in this Netlify-ready branch because the application currently uses local SQLite as its primary data model. The Firebase web configuration can remain configured for the browser UI, but server-side sync will not run unless it is separately reintroduced for Netlify.
+The server uses Firebase Admin/Firestore as the authoritative user and account source when these values are present:
+
+```text
+FIREBASE_PROJECT_ID=<firebase-project-id>
+FIREBASE_CLIENT_EMAIL=<service-account-client-email>
+FIREBASE_PRIVATE_KEY=<full-service-account-private-key>
+```
+
+`FIREBASE_PRIVATE_KEY` may be pasted with real line breaks or with literal `\n` sequences; the application normalizes both formats. These values are server secrets and must only be added to Netlify environment variables. The application hydrates the local SQLite cache from Firestore, verifies credentials through Firebase Authentication, and uses Firestore-backed customer statistics in the admin dashboard.
 
 ## Important persistence note
 
