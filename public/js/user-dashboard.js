@@ -1,22 +1,48 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const accountCards = document.querySelectorAll('.account-card');
-  accountCards.forEach(card => {
+  bindAccountCards();
+  loadNotifications();
+  window.setInterval(refreshDashboard, 30000);
+});
+
+function bindAccountCards() {
+  document.querySelectorAll('.account-card').forEach(card => {
+    if (card.dataset.bound === 'true') return;
+    card.dataset.bound = 'true';
     card.addEventListener('click', e => {
       if (e.target.tagName.toLowerCase() === 'a' || e.target.tagName.toLowerCase() === 'button') return;
       const link = card.querySelector('a.btn-light');
       if (link) link.click();
     });
   });
-
-  loadNotifications();
-});
+}
 
 async function loadNotifications() {
   try {
     const dot = document.getElementById('notifDot');
     if (!dot) return;
     const data = await apiRequest('/api/user/notifications');
-    if (data.unread > 0) dot.style.display = 'block';
+    if (data) dot.style.display = data.unread > 0 ? 'block' : 'none';
+  } catch (e) {}
+}
+
+async function refreshDashboard() {
+  if (document.hidden || document.querySelector('form:focus-within')) return;
+  try {
+    const response = await fetch(`${window.location.pathname}?partial=1`, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      cache: 'no-store'
+    });
+    if (!response.ok) return;
+    const html = await response.text();
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const currentContent = document.querySelector('.content');
+    const nextContent = parsed.querySelector('.content');
+    if (currentContent && nextContent) {
+      currentContent.innerHTML = nextContent.innerHTML;
+      bindAccountCards();
+      loadNotifications();
+    }
   } catch (e) {}
 }
 

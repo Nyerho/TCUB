@@ -1562,6 +1562,21 @@ a:hover {
   flex: 1;
 }
 
+@media (min-width: 992px) {
+  .sidebar.offcanvas-lg,
+  .sidebar.offcanvas {
+    display: flex !important;
+    position: sticky;
+    top: 0;
+    visibility: visible !important;
+    transform: none !important;
+    width: 260px;
+    max-width: 260px;
+    height: 100vh;
+    pointer-events: auto;
+  }
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

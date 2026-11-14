@@ -20,11 +20,39 @@
     </div>
   <% } %>
   <script>
-    // Submit marked admin forms without a full-page refresh. Send URL-encoded form
-    // fields because Express parses URL-encoded and JSON bodies, not multipart FormData.
+    window.captureFreezeReason = function (form, isCurrentlyFrozen) {
+      if (isCurrentlyFrozen) return true;
+      const reason = window.prompt('Enter the reason for freezing this account. This will be included in the customer email:', 'Account security review');
+      if (reason === null) return false;
+      const field = form.querySelector('input[name="reason"]');
+      if (field) field.value = reason.trim().slice(0, 500);
+      return true;
+    };
+
+    window.showActionToast = function (type, message) {
+      document.querySelectorAll('.live-action-toast').forEach((toast) => toast.remove());
+      const toast = document.createElement('div');
+      toast.className = `alert ${type === 'success' ? 'alert-success' : 'alert-danger'} live-action-toast`;
+      toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.18);';
+      toast.innerHTML = `<span class="alert-icon">${type === 'success' ? '✓' : '⚠️'}</span><div class="alert-content"><div class="alert-title">${type === 'success' ? 'Success' : 'Action failed'}</div><p class="alert-message"></p></div>`;
+      toast.querySelector('.alert-message').textContent = message || (type === 'success' ? 'Action completed successfully.' : 'The action could not be completed.');
+      document.body.appendChild(toast);
+      window.setTimeout(() => toast.remove(), 6500);
+    };
+
+    function showServerToast(parsedDocument) {
+      const success = parsedDocument.querySelector('#toast-success .alert-message');
+      const error = parsedDocument.querySelector('#toast-error .alert-message');
+      if (success) window.showActionToast('success', success.textContent.trim());
+      else if (error) window.showActionToast('error', error.textContent.trim());
+      return Boolean(success || error);
+    }
+
+    // Submit admin POST forms without a full-page refresh. Forms with file inputs
+    // opt out so uploads continue through the browser's native multipart handling.
     document.addEventListener('submit', async (event) => {
-      const form = event.target.closest('form[data-live-update="true"]');
-      if (!form || form.dataset.submitting === 'true') return;
+      const form = event.target.closest('form');
+      if (!form || form.method.toUpperCase() !== 'POST' || form.dataset.nativeSubmit === 'true' || form.dataset.submitting === 'true' || form.querySelector('input[type="file"]')) return;
       event.preventDefault();
       form.dataset.submitting = 'true';
       const submitButton = form.querySelector('button[type="submit"]');
@@ -44,27 +72,37 @@
           }
         });
         if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await response.json();
+          if (!data.success) throw new Error(data.message || 'The action was not completed.');
+          window.showActionToast('success', data.message || 'Action completed successfully.');
+          form.dataset.submitting = 'false';
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalLabel;
+          }
+          return;
+        }
         const html = await response.text();
         const parsed = new DOMParser().parseFromString(html, 'text/html');
         const currentShell = document.querySelector('.main');
         const nextShell = parsed.querySelector('.main');
         if (!currentShell || !nextShell) throw new Error('Updated admin page could not be rendered.');
         currentShell.innerHTML = nextShell.innerHTML;
+        const hadServerToast = showServerToast(parsed);
+        if (!hadServerToast) window.showActionToast('success', 'Action completed successfully.');
         const nextUrl = new URL(response.url, window.location.origin);
         window.history.pushState({}, '', nextUrl.pathname + nextUrl.search);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.dispatchEvent(new CustomEvent('admin:content-updated'));
       } catch (error) {
         form.dataset.submitting = 'false';
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.innerHTML = originalLabel;
         }
-        const notice = document.createElement('div');
-        notice.className = 'alert alert-danger';
-        notice.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;max-width:360px;';
-        notice.textContent = `Could not save changes: ${error.message}`;
-        document.body.appendChild(notice);
-        setTimeout(() => notice.remove(), 5000);
+        window.showActionToast('error', `Could not complete the action: ${error.message}`);
       }
     });
   </script>

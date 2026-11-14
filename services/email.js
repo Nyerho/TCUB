@@ -151,7 +151,25 @@ async function sendPasswordChangedEmail(user) {
 }
 
 function transactionLabel(transaction) {
+  if (transaction.transaction_type === 'admin_adjustment') return 'Account adjustment';
   return String(transaction.transaction_type || 'transaction').replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function productionDescription(description) {
+  const value = String(description || '').trim();
+  if (!value || /probe|tester|test transaction|balance adjusted by admin|admin adjustment/i.test(value)) return '';
+  return value;
+}
+
+async function sendAccountFrozenEmail(user, reason) {
+  const name = userName(user);
+  const safeReason = String(reason || '').trim() || 'Your account is currently unavailable while we complete a security review.';
+  return sendEmail({
+    to: user.email,
+    subject: 'Important notice about your TCUB account',
+    html: frame('Important account notice', `<p>Hello ${escapeHtml(name)},</p><p>Your Think Union Credit Bank account has been temporarily frozen and account access is currently restricted.</p><p><strong>Reason:</strong> ${escapeHtml(safeReason)}</p><p>Please contact our customer support team if you need assistance or believe this action was taken in error.</p>`),
+    text: `Hello ${name},\n\nYour Think Union Credit Bank account has been temporarily frozen and account access is currently restricted.\n\nReason: ${safeReason}\n\nPlease contact our customer support team if you need assistance or believe this action was taken in error.`
+  });
 }
 
 function transactionAmount(transaction) {
@@ -190,7 +208,8 @@ async function sendTransactionActivityEmailById(transactionId, options = {}) {
     `<tr><td style="padding:6px 12px 6px 0"><strong>Account</strong></td><td>${escapeHtml(account)}</td></tr>`,
     `<tr><td style="padding:6px 12px 6px 0"><strong>Reference</strong></td><td>${escapeHtml(reference)}</td></tr>`
   ];
-  if (transaction.description) detailRows.push(`<tr><td style="padding:6px 12px 6px 0"><strong>Description</strong></td><td>${escapeHtml(transaction.description)}</td></tr>`);
+  const description = productionDescription(transaction.description);
+  if (description) detailRows.push(`<tr><td style="padding:6px 12px 6px 0"><strong>Description</strong></td><td>${escapeHtml(description)}</td></tr>`);
 
   const name = userName(transaction);
   const text = [
@@ -199,7 +218,7 @@ async function sendTransactionActivityEmailById(transactionId, options = {}) {
     `Amount: ${amount}`,
     `Status: ${status}`,
     `Reference: ${reference}`,
-    transaction.description ? `Description: ${transaction.description}` : '',
+    description ? `Description: ${description}` : '',
     note,
     'If you do not recognize this activity, contact support immediately.'
   ].filter(Boolean).join('\n');
@@ -207,7 +226,7 @@ async function sendTransactionActivityEmailById(transactionId, options = {}) {
   return sendEmail({
     to: transaction.email,
     subject,
-    html: frame('Transaction activity', `<p>Hello ${escapeHtml(name)},</p><p>A ${escapeHtml(label.toLowerCase())} was recorded on ${escapeHtml(account)}.</p><table>${detailRows.join('')}</table>${note ? `<p><strong>Note:</strong> ${escapeHtml(note)}</p>` : ''}<p>If you do not recognize this activity, contact support immediately.</p>`),
+    html: frame('Transaction activity', `<p>Hello ${escapeHtml(name)},</p><p>A ${escapeHtml(label.toLowerCase())} was recorded on ${escapeHtml(account)}.</p><table>${detailRows.join('')}</table>${note ? `<p><strong>Update:</strong> ${escapeHtml(note)}</p>` : ''}<p>If you do not recognize this activity, contact support immediately.</p>`),
     text
   });
 }
@@ -222,5 +241,6 @@ module.exports = {
   sendLoginWelcomeEmail,
   sendPasswordResetEmail,
   sendPasswordChangedEmail,
+  sendAccountFrozenEmail,
   sendTransactionActivityEmailById
 };

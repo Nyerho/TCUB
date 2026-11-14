@@ -4,6 +4,7 @@ const { db, generateAccountNumber, generateCardNumber, generateCVV } = require('
 const { syncLocalUserToFirebaseAuth } = require('../lib/firebase-admin');
 const {
   sendPasswordChangedEmail,
+  sendAccountFrozenEmail,
   sendTransactionActivityEmailById
 } = require('../services/email');
 const {
@@ -561,7 +562,7 @@ router.get('/users/:id', requireAdmin, async (req, res) => {
 });
 
 router.post('/users/:id/update', requireAdmin, async (req, res) => {
-  const { first_name, last_name, email, phone, address, city, state, postcode, country, date_of_birth, is_verified, is_frozen } = req.body;
+  const { first_name, last_name, email, phone, address, city, state, postcode, country, date_of_birth, is_verified, is_frozen, freeze_reason } = req.body;
   const userId = req.params.id;
 
   const existingUser = await findAdminCustomerById(userId);
@@ -594,8 +595,12 @@ router.post('/users/:id/update', requireAdmin, async (req, res) => {
   addAuditLog(req.session.userId, 'UPDATE_USER', 'user', userId, `Updated details for ${first_name} ${last_name}`, req.ip);
   addNotification(userId, 'Account Updated', 'Your account details have been updated by an administrator.', 'info');
 
-  if (is_frozen) {
-    addNotification(userId, 'Account Frozen', 'Your account has been frozen. Please contact support.', 'warning');
+  if (is_frozen && !existingUser.is_frozen) {
+    const reason = String(freeze_reason || '').trim().slice(0, 500) || 'Account security review';
+    addNotification(userId, 'Account Frozen', `Your account has been frozen. Reason: ${reason}`, 'warning');
+    sendAccountFrozenEmail({ ...existingUser, first_name, last_name, email }, reason).catch((error) => {
+      console.error(`Failed to send account freeze email for user ${userId}:`, error);
+    });
   }
 
   req.session.success = 'User details updated successfully.';
@@ -610,6 +615,7 @@ router.post('/users/:id/freeze', requireAdmin, async (req, res) => {
   }
 
   const newStatus = user.is_frozen === 1 ? 0 : 1;
+  const reason = String(req.body.reason || '').trim().slice(0, 500);
   db.prepare('UPDATE users SET is_frozen = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, userId);
 
   if (isFirestoreEnabled()) {
@@ -621,10 +627,17 @@ router.post('/users/:id/freeze', requireAdmin, async (req, res) => {
     }
   }
 
-  addAuditLog(req.session.userId, newStatus ? 'FREEZE_USER' : 'UNFREEZE_USER', 'user', userId, `${newStatus ? 'Frozen' : 'Unfrozen'} account for ${user.first_name} ${user.last_name}`, req.ip);
-  addNotification(userId, newStatus ? 'Account Frozen' : 'Account Unfrozen', newStatus ? 'Your account has been frozen.' : 'Your account has been unfrozen.', newStatus ? 'warning' : 'success');
+  const actionReason = reason || 'Account security review';
+  addAuditLog(req.session.userId, newStatus ? 'FREEZE_USER' : 'UNFREEZE_USER', 'user', userId, `${newStatus ? 'Frozen' : 'Unfrozen'} account for ${user.first_name} ${user.last_name}${newStatus ? ` — Reason: ${actionReason}` : ''}`, req.ip);
+  addNotification(userId, newStatus ? 'Account Frozen' : 'Account Unfrozen', newStatus ? `Your account has been frozen. Reason: ${actionReason}` : 'Your account has been unfrozen and access has been restored.', newStatus ? 'warning' : 'success');
 
-  res.json({ success: true, frozen: newStatus === 1 });
+  if (newStatus) {
+    sendAccountFrozenEmail(user, actionReason).catch((error) => {
+      console.error(`Failed to send account freeze email for user ${userId}:`, error);
+    });
+  }
+
+  res.json({ success: true, frozen: newStatus === 1, message: newStatus ? 'Account frozen and notification queued.' : 'Account unfrozen successfully.' });
 });
 
 router.get('/users/:id/freeze', requireAdmin, async (req, res) => {
@@ -636,6 +649,7 @@ router.get('/users/:id/freeze', requireAdmin, async (req, res) => {
   }
 
   const newStatus = user.is_frozen === 1 ? 0 : 1;
+  const actionReason = 'Account security review';
   db.prepare('UPDATE users SET is_frozen = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, userId);
 
   if (isFirestoreEnabled()) {
@@ -647,8 +661,13 @@ router.get('/users/:id/freeze', requireAdmin, async (req, res) => {
       return res.redirect(req.get('referer') || `/admin/users/${userId}`);
     }
   }
-  addAuditLog(req.session.userId, newStatus ? 'FREEZE_USER' : 'UNFREEZE_USER', 'user', userId, `${newStatus ? 'Frozen' : 'Unfrozen'} account for ${user.first_name} ${user.last_name}`, req.ip);
-  addNotification(userId, newStatus ? 'Account Frozen' : 'Account Unfrozen', newStatus ? 'Your account has been frozen.' : 'Your account has been unfrozen.', newStatus ? 'warning' : 'success');
+  addAuditLog(req.session.userId, newStatus ? 'FREEZE_USER' : 'UNFREEZE_USER', 'user', userId, `${newStatus ? 'Frozen' : 'Unfrozen'} account for ${user.first_name} ${user.last_name}${newStatus ? ` — Reason: ${actionReason}` : ''}`, req.ip);
+  addNotification(userId, newStatus ? 'Account Frozen' : 'Account Unfrozen', newStatus ? `Your account has been frozen. Reason: ${actionReason}` : 'Your account has been unfrozen and access has been restored.', newStatus ? 'warning' : 'success');
+  if (newStatus) {
+    sendAccountFrozenEmail(user, actionReason).catch((error) => {
+      console.error(`Failed to send account freeze email for user ${userId}:`, error);
+    });
+  }
 
   req.session.success = `User ${newStatus ? 'frozen' : 'unfrozen'} successfully.`;
   res.redirect(req.get('referer') || `/admin/users/${userId}`);

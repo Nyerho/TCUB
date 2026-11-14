@@ -28,7 +28,10 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="document.getElementById('editUserModal').classList.add('active')">✏️ Edit</button>
         <% if (!customer.is_admin) { %>
-          <a href="/admin/users/<%= customer.id %>/freeze" class="btn btn-warning"><%= customer.is_frozen ? '🔥 Unfreeze' : '❄️ Freeze' %></a>
+          <form method="POST" action="/admin/users/<%= customer.id %>/freeze" style="display:inline;" onsubmit="return window.captureFreezeReason(this, <%= customer.is_frozen ? 'true' : 'false' %>);">
+            <input type="hidden" name="reason" value="">
+            <button type="submit" class="btn btn-warning"><%= customer.is_frozen ? '🔥 Unfreeze' : '❄️ Freeze' %></button>
+          </form>
         <% } %>
         <button class="btn btn-outline" onclick="document.getElementById('pwModal').classList.add('active')">🔐 Reset PW</button>
         <a href="/admin/transactions/new?user_id=<%= customer.id %>" class="btn btn-light">➕ Add Transaction</a>
@@ -310,6 +313,10 @@
       <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
         <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" name="is_verified" class="form-checkbox" <%= customer.is_verified?'checked':'' %>><span>Verified</span></label>
         <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" name="is_frozen" class="form-checkbox" <%= customer.is_frozen?'checked':'' %>><span>Frozen</span></label>
+      </div>
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">Freeze reason (included in the customer email)</label>
+        <textarea name="freeze_reason" class="form-input" rows="3" maxlength="500" placeholder="For example: We detected unusual activity and need to complete a security review."></textarea>
       </div>
     </div>
     <div class="modal-footer">
