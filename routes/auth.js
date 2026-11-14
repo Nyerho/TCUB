@@ -289,11 +289,13 @@ router.post('/register', [
 
   req.session.success = 'Account created successfully! Please login to continue.';
 
+  const createdUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
   try {
-    const createdUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
-    sendAccountWelcomeEmail(createdUser).catch((error) => {
-      console.error(`Failed to send welcome email for ${normalizedEmail}:`, error);
-    });
+    await sendAccountWelcomeEmail(createdUser);
+  } catch (error) {
+    console.error(`[email] failed to send welcome email for ${normalizedEmail}:`, error.message);
+  }
+  try {
     await syncLocalUserToFirebaseAuth(createdUser, password);
     console.log(`${requestTag} step=firebase_auth_sync status=ok`);
   } catch (error) {
@@ -393,12 +395,14 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  sendLoginWelcomeEmail(user, {
-    ip: req.ip,
-    userAgent: req.get('user-agent')
-  }).catch((error) => {
-    console.error(`Failed to send login email for ${normalizedEmail}:`, error);
-  });
+  try {
+    await sendLoginWelcomeEmail(user, {
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+  } catch (error) {
+    console.error(`[email] failed to send sign-in email for ${normalizedEmail}:`, error.message);
+  }
 
   req.session.userId = user.id;
   const isAdmin = Number(user.is_admin) === 1 ? 1 : 0;
@@ -556,9 +560,11 @@ router.post('/reset-password', async (req, res) => {
     console.error(`Failed to sync Firebase Authentication password for ${updatedUser.email}:`, error);
   });
 
-  sendPasswordChangedEmail(updatedUser).catch((error) => {
-    console.error(`Failed to send password changed email for ${updatedUser.email}:`, error);
-  });
+  try {
+    await sendPasswordChangedEmail(updatedUser);
+  } catch (error) {
+    console.error(`[email] failed to send password-changed email for ${updatedUser.email}:`, error.message);
+  }
 
   req.session.success = 'Your password has been reset successfully. Please login with your new password.';
   res.redirect('/auth/login');

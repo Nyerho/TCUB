@@ -45,6 +45,8 @@ EMAIL_REPLY_TO=support@your-domain.example
 
 `EMAIL_FROM` must be a sender that has been verified in Brevo. After adding or changing these values in Netlify, create a new deploy before testing registration or sign-in. The application never logs the API key; missing configuration causes email delivery to be skipped safely, while Brevo API failures are written to the function logs with the HTTP status.
 
+After deployment, a signed-in administrator can open `/admin/email-status` to confirm which required and optional email settings are present at runtime; the endpoint never returns secret values. Function logs record whether a message was accepted, skipped, timed out, or rejected by Brevo. Welcome, sign-in, password-change, and transaction emails are awaited within the Netlify request so the function does not return before the provider responds.
+
 The server uses Firebase Admin/Firestore as the authoritative user and account source when these values are present:
 
 ```text

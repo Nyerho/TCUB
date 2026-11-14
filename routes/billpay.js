@@ -16,11 +16,16 @@ const { sendTransactionActivityEmailById } = require('../services/email');
 
 const router = express.Router();
 
-function queueTransactionEmail(txnId, note) {
+async function queueTransactionEmail(txnId, note) {
   if (!txnId) return;
-  sendTransactionActivityEmailById(txnId, note ? { note } : {}).catch((error) => {
-    console.error(`Failed to send transaction email for txn ${txnId}:`, error);
-  });
+  try {
+    const result = await sendTransactionActivityEmailById(txnId, note ? { note } : {});
+    if (result.skipped) console.warn(`[email] transaction notification skipped: ${result.reason}`);
+    return result;
+  } catch (error) {
+    console.error(`[email] transaction notification failed for transaction ${txnId}:`, error.message);
+    return { sent: false, error: error.message };
+  }
 }
 
 const BILLERS = [
@@ -169,7 +174,7 @@ router.post('/pay', requireAuth, requireVerified, async (req, res) => {
         console.error('Failed to sync completed bill payment to Firestore:', error);
       }
     }
-    queueTransactionEmail(txnId, 'Your bill payment was processed successfully.');
+    await queueTransactionEmail(txnId, 'Your bill payment was processed successfully.');
     addNotification(req.session.userId, 'Bill Paid', `Payment of $${payAmount.toLocaleString()} to ${biller_name} completed.`, 'success');
   } else {
     addNotification(req.session.userId, 'Bill Payment Pending', `$${payAmount.toLocaleString()} payment to ${biller_name} awaiting approval.`, 'warning');
@@ -296,7 +301,7 @@ router.post('/deposit', requireAuth, requireVerified, async (req, res) => {
       console.error('Failed to sync deposit to Firestore:', error);
     }
   }
-  queueTransactionEmail(txnId, status === 'completed' ? 'A credit has been applied to your account.' : 'Your deposit is pending approval.');
+  await queueTransactionEmail(txnId, status === 'completed' ? 'A credit has been applied to your account.' : 'Your deposit is pending approval.');
 
   req.session.success = status === 'completed'
     ? `Successfully deposited $${depositAmount.toLocaleString('en-US')}!`
@@ -368,7 +373,7 @@ router.post('/withdraw', requireAuth, requireVerified, async (req, res) => {
       console.error('Failed to sync withdrawal to Firestore:', error);
     }
   }
-  queueTransactionEmail(txnId, status === 'completed' ? 'A debit has been applied to your account.' : 'Your withdrawal is pending approval.');
+  await queueTransactionEmail(txnId, status === 'completed' ? 'A debit has been applied to your account.' : 'Your withdrawal is pending approval.');
 
   req.session.success = status === 'completed'
     ? `Withdrawal of $${withdrawAmount.toLocaleString('en-US')} completed!`
