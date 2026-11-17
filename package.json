@@ -7,10 +7,10 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "cf:templates": "node scripts/compile-templates.js",
-    "cf:dev": "npm run cf:templates && wrangler dev --local",
+    "cf:dev": "wrangler dev --config wrangler.jsonc --local",
     "cf:mock": "wrangler dev --config wrangler.mock.jsonc --local",
     "cf:test": "node --test test/worker.test.js",
-    "cf:deploy": "npm run cf:templates && wrangler deploy",
+    "cf:deploy": "wrangler deploy --config wrangler.jsonc",
     "netlify:build": "node -e \"console.log('Netlify build: serverless Express function ready')\"",
     "netlify:dev": "netlify dev"
   },

@@ -3,40 +3,29 @@
   "name": "tcub",
   "main": "src/index.js",
   "compatibility_date": "2026-11-11",
-  "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
-  "alias": {
-    "express": "./src/express-worker.js"
-  },
-  "find_additional_modules": true,
-  "preserve_file_names": true,
-  "rules": [
+  "containers": [
     {
-      "type": "CommonJS",
-      "globs": ["**/*.generated.js"],
-      "fallthrough": false
+      "class_name": "TCUBContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "base": {
+          "dockerfile": "./Dockerfile"
+        }
+      }
     }
   ],
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS",
-    "run_worker_first": true
-  },
   "durable_objects": {
     "bindings": [
       {
-        "name": "TCUB_APP",
-        "class_name": "TCUBApp"
+        "name": "TCUB_CONTAINER",
+        "class_name": "TCUBContainer"
       }
     ]
   },
   "exports": {
-    "TCUBApp": {
+    "TCUBContainer": {
       "type": "durable-object",
       "storage": "sqlite"
     }
-  },
-  "vars": {
-    "NODE_ENV": "production"
   }
 }
